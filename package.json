@@ -14,9 +14,7 @@
     "Visualization"
   ],
   "icon": "assets/images/icon.png",
-  "activationEvents": [
-    "onLanguage:dbml"
-  ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "languages": [
@@ -50,7 +48,7 @@
       "activitybar": [
         {
           "id": "noise-dbml-sidebar",
-          "title": "DBML Diagram",
+          "title": "DBML Files",
           "icon": "$(database)"
         }
       ]
@@ -58,25 +56,41 @@
     "views": {
       "noise-dbml-sidebar": [
         {
-          "type": "webview",
-          "id": "noiseDbml.diagramView",
-          "name": "ER Diagram",
-          "contextualTitle": "DBML Diagram"
+          "id": "noiseDbml.fileExplorer",
+          "name": "DBML Files",
+          "contextualTitle": "DBML Files",
+          "icon": "$(database)"
         }
       ]
     },
     "commands": [
       {
-        "command": "noiseDbml.openDiagram",
-        "title": "DBML: Open ER Diagram",
+        "command": "noiseDbml.seeDiagram",
+        "title": "See diagram",
         "icon": "$(open-preview)"
       },
       {
-        "command": "noiseDbml.refreshDiagram",
-        "title": "DBML: Refresh Diagram",
+        "command": "noiseDbml.refreshFileList",
+        "title": "DBML: Refresh File List",
         "icon": "$(refresh)"
       }
-    ]
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "noiseDbml.seeDiagram",
+          "when": "view == noiseDbml.fileExplorer && viewItem == dbmlFile",
+          "group": "inline"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "noiseDbml.refreshFileList",
+          "when": "view == noiseDbml.fileExplorer",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run build",

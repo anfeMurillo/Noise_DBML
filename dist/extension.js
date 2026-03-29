@@ -34,10 +34,68 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode2 = __toESM(require("vscode"));
+var vscode3 = __toESM(require("vscode"));
 
-// src/providers/DiagramPanelProvider.ts
+// src/providers/DbmlFileProvider.ts
 var vscode = __toESM(require("vscode"));
+var path = __toESM(require("path"));
+var DbmlFileItem = class extends vscode.TreeItem {
+  constructor(resourceUri, label) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.resourceUri = resourceUri;
+    this.label = label;
+    this.tooltip = resourceUri.fsPath;
+    this.description = vscode.workspace.asRelativePath(
+      path.dirname(resourceUri.fsPath)
+    );
+    this.iconPath = new vscode.ThemeIcon("database");
+    this.contextValue = "dbmlFile";
+    this.command = {
+      command: "vscode.open",
+      title: "Open File",
+      arguments: [resourceUri]
+    };
+  }
+};
+var DbmlFileProvider = class {
+  constructor() {
+    this._onDidChangeTreeData = new vscode.EventEmitter();
+    this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+    this._watcher = vscode.workspace.createFileSystemWatcher("**/*.dbml");
+    this._watcher.onDidCreate(() => this.refresh());
+    this._watcher.onDidDelete(() => this.refresh());
+    this._watcher.onDidChange(() => this.refresh());
+  }
+  static {
+    this.viewType = "noiseDbml.fileExplorer";
+  }
+  refresh() {
+    this._onDidChangeTreeData.fire();
+  }
+  dispose() {
+    this._watcher?.dispose();
+  }
+  getTreeItem(element) {
+    return element;
+  }
+  async getChildren(_element) {
+    const uris = await vscode.workspace.findFiles("**/*.dbml", "**/node_modules/**");
+    if (uris.length === 0) {
+      return [];
+    }
+    uris.sort(
+      (a, b) => path.basename(a.fsPath).localeCompare(path.basename(b.fsPath))
+    );
+    return uris.map(
+      (uri) => new DbmlFileItem(uri, path.basename(uri.fsPath))
+    );
+  }
+};
+
+// src/providers/DiagramTabProvider.ts
+var vscode2 = __toESM(require("vscode"));
+var fs = __toESM(require("fs"));
+var path2 = __toESM(require("path"));
 
 // node_modules/lodash-es/_freeGlobal.js
 var freeGlobal = typeof global == "object" && global && global.Object === Object && global;
@@ -1133,19 +1191,19 @@ function toKey(value) {
 var toKey_default = toKey;
 
 // node_modules/lodash-es/_baseGet.js
-function baseGet(object, path) {
-  path = castPath_default(path, object);
-  var index = 0, length = path.length;
+function baseGet(object, path3) {
+  path3 = castPath_default(path3, object);
+  var index = 0, length = path3.length;
   while (object != null && index < length) {
-    object = object[toKey_default(path[index++])];
+    object = object[toKey_default(path3[index++])];
   }
   return index && index == length ? object : void 0;
 }
 var baseGet_default = baseGet;
 
 // node_modules/lodash-es/get.js
-function get(object, path, defaultValue) {
-  var result = object == null ? void 0 : baseGet_default(object, path);
+function get(object, path3, defaultValue) {
+  var result = object == null ? void 0 : baseGet_default(object, path3);
   return result === void 0 ? defaultValue : result;
 }
 var get_default = get;
@@ -2057,11 +2115,11 @@ function baseHasIn(object, key) {
 var baseHasIn_default = baseHasIn;
 
 // node_modules/lodash-es/_hasPath.js
-function hasPath(object, path, hasFunc) {
-  path = castPath_default(path, object);
-  var index = -1, length = path.length, result = false;
+function hasPath(object, path3, hasFunc) {
+  path3 = castPath_default(path3, object);
+  var index = -1, length = path3.length, result = false;
   while (++index < length) {
-    var key = toKey_default(path[index]);
+    var key = toKey_default(path3[index]);
     if (!(result = object != null && hasFunc(object, key))) {
       break;
     }
@@ -2076,21 +2134,21 @@ function hasPath(object, path, hasFunc) {
 var hasPath_default = hasPath;
 
 // node_modules/lodash-es/hasIn.js
-function hasIn(object, path) {
-  return object != null && hasPath_default(object, path, baseHasIn_default);
+function hasIn(object, path3) {
+  return object != null && hasPath_default(object, path3, baseHasIn_default);
 }
 var hasIn_default = hasIn;
 
 // node_modules/lodash-es/_baseMatchesProperty.js
 var COMPARE_PARTIAL_FLAG6 = 1;
 var COMPARE_UNORDERED_FLAG4 = 2;
-function baseMatchesProperty(path, srcValue) {
-  if (isKey_default(path) && isStrictComparable_default(srcValue)) {
-    return matchesStrictComparable_default(toKey_default(path), srcValue);
+function baseMatchesProperty(path3, srcValue) {
+  if (isKey_default(path3) && isStrictComparable_default(srcValue)) {
+    return matchesStrictComparable_default(toKey_default(path3), srcValue);
   }
   return function(object) {
-    var objValue = get_default(object, path);
-    return objValue === void 0 && objValue === srcValue ? hasIn_default(object, path) : baseIsEqual_default(srcValue, objValue, COMPARE_PARTIAL_FLAG6 | COMPARE_UNORDERED_FLAG4);
+    var objValue = get_default(object, path3);
+    return objValue === void 0 && objValue === srcValue ? hasIn_default(object, path3) : baseIsEqual_default(srcValue, objValue, COMPARE_PARTIAL_FLAG6 | COMPARE_UNORDERED_FLAG4);
   };
 }
 var baseMatchesProperty_default = baseMatchesProperty;
@@ -2104,16 +2162,16 @@ function baseProperty(key) {
 var baseProperty_default = baseProperty;
 
 // node_modules/lodash-es/_basePropertyDeep.js
-function basePropertyDeep(path) {
+function basePropertyDeep(path3) {
   return function(object) {
-    return baseGet_default(object, path);
+    return baseGet_default(object, path3);
   };
 }
 var basePropertyDeep_default = basePropertyDeep;
 
 // node_modules/lodash-es/property.js
-function property(path) {
-  return isKey_default(path) ? baseProperty_default(toKey_default(path)) : basePropertyDeep_default(path);
+function property(path3) {
+  return isKey_default(path3) ? baseProperty_default(toKey_default(path3)) : basePropertyDeep_default(path3);
 }
 var property_default = property;
 
@@ -2481,8 +2539,8 @@ function baseHas(object, key) {
 var baseHas_default = baseHas;
 
 // node_modules/lodash-es/has.js
-function has(object, path) {
-  return object != null && hasPath_default(object, path, baseHas_default);
+function has(object, path3) {
+  return object != null && hasPath_default(object, path3, baseHas_default);
 }
 var has_default = has;
 
@@ -2605,14 +2663,14 @@ function negate(predicate) {
 var negate_default = negate;
 
 // node_modules/lodash-es/_baseSet.js
-function baseSet(object, path, value, customizer) {
+function baseSet(object, path3, value, customizer) {
   if (!isObject_default(object)) {
     return object;
   }
-  path = castPath_default(path, object);
-  var index = -1, length = path.length, lastIndex = length - 1, nested = object;
+  path3 = castPath_default(path3, object);
+  var index = -1, length = path3.length, lastIndex = length - 1, nested = object;
   while (nested != null && ++index < length) {
-    var key = toKey_default(path[index]), newValue = value;
+    var key = toKey_default(path3[index]), newValue = value;
     if (key === "__proto__" || key === "constructor" || key === "prototype") {
       return object;
     }
@@ -2620,7 +2678,7 @@ function baseSet(object, path, value, customizer) {
       var objValue = nested[key];
       newValue = customizer ? customizer(objValue, key, nested) : void 0;
       if (newValue === void 0) {
-        newValue = isObject_default(objValue) ? objValue : isIndex_default(path[index + 1]) ? [] : {};
+        newValue = isObject_default(objValue) ? objValue : isIndex_default(path3[index + 1]) ? [] : {};
       }
     }
     assignValue_default(nested, key, newValue);
@@ -2634,9 +2692,9 @@ var baseSet_default = baseSet;
 function basePickBy(object, paths, predicate) {
   var index = -1, length = paths.length, result = {};
   while (++index < length) {
-    var path = paths[index], value = baseGet_default(object, path);
-    if (predicate(value, path)) {
-      baseSet_default(result, castPath_default(path, object), value);
+    var path3 = paths[index], value = baseGet_default(object, path3);
+    if (predicate(value, path3)) {
+      baseSet_default(result, castPath_default(path3, object), value);
     }
   }
   return result;
@@ -2652,8 +2710,8 @@ function pickBy(object, predicate) {
     return [prop];
   });
   predicate = baseIteratee_default(predicate);
-  return basePickBy_default(object, props, function(value, path) {
-    return predicate(value, path[0]);
+  return basePickBy_default(object, props, function(value, path3) {
+    return predicate(value, path3[0]);
   });
 }
 var pickBy_default = pickBy;
@@ -5104,12 +5162,12 @@ function assignCategoriesMapProp(tokenTypes) {
     singleAssignCategoriesToksMap([], currTokType);
   });
 }
-function singleAssignCategoriesToksMap(path, nextNode) {
-  forEach_default(path, (pathNode) => {
+function singleAssignCategoriesToksMap(path3, nextNode) {
+  forEach_default(path3, (pathNode) => {
     nextNode.categoryMatchesMap[pathNode.tokenTypeIdx] = true;
   });
   forEach_default(nextNode.CATEGORIES, (nextCategory) => {
-    const newPath = path.concat(nextNode);
+    const newPath = path3.concat(nextNode);
     if (!includes_default(newPath, nextCategory)) {
       singleAssignCategoriesToksMap(newPath, nextCategory);
     }
@@ -5953,10 +6011,10 @@ var GastRefResolverVisitor = class extends GAstVisitor {
 
 // node_modules/chevrotain/lib/src/parse/grammar/interpreter.js
 var AbstractNextPossibleTokensWalker = class extends RestWalker {
-  constructor(topProd, path) {
+  constructor(topProd, path3) {
     super();
     this.topProd = topProd;
-    this.path = path;
+    this.path = path3;
     this.possibleTokTypes = [];
     this.nextProductionName = "";
     this.nextProductionOccurrence = 0;
@@ -6000,9 +6058,9 @@ var AbstractNextPossibleTokensWalker = class extends RestWalker {
   }
 };
 var NextAfterTokenWalker = class extends AbstractNextPossibleTokensWalker {
-  constructor(topProd, path) {
-    super(topProd, path);
-    this.path = path;
+  constructor(topProd, path3) {
+    super(topProd, path3);
+    this.path = path3;
     this.nextTerminalName = "";
     this.nextTerminalOccurrence = 0;
     this.nextTerminalName = this.path.lastTok.name;
@@ -6598,10 +6656,10 @@ function initializeArrayOfArrays(size) {
   }
   return result;
 }
-function pathToHashKeys(path) {
+function pathToHashKeys(path3) {
   let keys2 = [""];
-  for (let i = 0; i < path.length; i++) {
-    const tokType = path[i];
+  for (let i = 0; i < path3.length; i++) {
+    const tokType = path3[i];
     const longerKeys = [];
     for (let j = 0; j < keys2.length; j++) {
       const currShorterKey = keys2[j];
@@ -6840,7 +6898,7 @@ function validateRuleIsOverridden(ruleName, definedRulesNames, className) {
   }
   return errors;
 }
-function validateNoLeftRecursion(topRule, currRule, errMsgProvider, path = []) {
+function validateNoLeftRecursion(topRule, currRule, errMsgProvider, path3 = []) {
   const errors = [];
   const nextNonTerminals = getFirstNoneTerminal(currRule.definition);
   if (isEmpty_default(nextNonTerminals)) {
@@ -6852,15 +6910,15 @@ function validateNoLeftRecursion(topRule, currRule, errMsgProvider, path = []) {
       errors.push({
         message: errMsgProvider.buildLeftRecursionError({
           topLevelRule: topRule,
-          leftRecursionPath: path
+          leftRecursionPath: path3
         }),
         type: ParserDefinitionErrorType.LEFT_RECURSION,
         ruleName
       });
     }
-    const validNextSteps = difference_default(nextNonTerminals, path.concat([topRule]));
+    const validNextSteps = difference_default(nextNonTerminals, path3.concat([topRule]));
     const errorsFromNextSteps = flatMap_default(validNextSteps, (currRefRule) => {
-      const newPath = clone_default(path);
+      const newPath = clone_default(path3);
       newPath.push(currRefRule);
       return validateNoLeftRecursion(topRule, currRefRule, errMsgProvider, newPath);
     });
@@ -10416,63 +10474,81 @@ function parseDbml(text) {
   }
 }
 
-// src/providers/DiagramPanelProvider.ts
-var DiagramPanelProvider = class {
+// src/providers/DiagramTabProvider.ts
+var DiagramTabProvider = class _DiagramTabProvider {
   constructor(_extensionUri) {
     this._extensionUri = _extensionUri;
   }
   static {
-    this.viewType = "noiseDbml.diagramView";
+    /** Map from file path → open WebviewPanel */
+    this._panels = /* @__PURE__ */ new Map();
   }
-  resolveWebviewView(webviewView, _context, _token) {
-    this._view = webviewView;
-    webviewView.webview.options = {
-      enableScripts: true,
-      localResourceRoots: [
-        vscode.Uri.joinPath(this._extensionUri, "dist", "webview")
-      ]
-    };
-    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-    webviewView.webview.onDidReceiveMessage((message) => {
-      switch (message.type) {
-        case "ready":
-          if (this._lastContent) {
-            this.updateContent(this._lastContent);
-          } else {
-            const editor = vscode.window.activeTextEditor;
-            if (editor && editor.document.languageId === "dbml") {
-              this.updateContent(editor.document.getText());
-            }
-          }
-          break;
-        case "error":
-          vscode.window.showErrorMessage(`DBML Diagram Error: ${message.text}`);
-          break;
+  /**
+   * Opens (or re-focuses) a diagram tab for the given .dbml file URI.
+   */
+  openForFile(fileUri) {
+    const filePath = fileUri.fsPath;
+    const fileName = path2.basename(filePath);
+    const existing = _DiagramTabProvider._panels.get(filePath);
+    if (existing) {
+      existing.reveal(vscode2.ViewColumn.Beside);
+      this._sendContent(existing, filePath);
+      return;
+    }
+    const panel = vscode2.window.createWebviewPanel(
+      "noiseDbml.diagramTab",
+      `${fileName} \u2014 ER Diagram`,
+      vscode2.ViewColumn.Beside,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [
+          vscode2.Uri.joinPath(this._extensionUri, "dist", "webview")
+        ]
+      }
+    );
+    _DiagramTabProvider._panels.set(filePath, panel);
+    panel.webview.html = this._getHtml(panel.webview);
+    panel.webview.onDidReceiveMessage((message) => {
+      if (message.type === "ready") {
+        this._sendContent(panel, filePath);
+      }
+      if (message.type === "error") {
+        vscode2.window.showErrorMessage(
+          `DBML Diagram Error: ${message.text}`
+        );
       }
     });
+    panel.onDidDispose(() => {
+      _DiagramTabProvider._panels.delete(filePath);
+    });
+    const watcher = vscode2.workspace.createFileSystemWatcher(
+      new vscode2.RelativePattern(
+        vscode2.Uri.file(path2.dirname(filePath)),
+        path2.basename(filePath)
+      )
+    );
+    watcher.onDidChange(() => this._sendContent(panel, filePath));
+    panel.onDidDispose(() => watcher.dispose());
   }
-  updateContent(text) {
-    this._lastContent = text;
-    if (!this._view) return;
-    const schema = parseDbml(text);
-    if (schema) {
-      this._view.webview.postMessage({
-        type: "update",
-        schema
-      });
+  // ---- Private helpers ------------------------------------------------
+  _sendContent(panel, filePath) {
+    try {
+      const text = fs.readFileSync(filePath, "utf8");
+      const schema = parseDbml(text);
+      if (schema) {
+        panel.webview.postMessage({ type: "update", schema });
+      }
+    } catch (err) {
+      console.error(`[NoiseDBML] Failed to read ${filePath}:`, err);
     }
   }
-  refresh() {
-    if (this._lastContent) {
-      this.updateContent(this._lastContent);
-    }
-  }
-  _getHtmlForWebview(webview) {
+  _getHtml(webview) {
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, "dist", "webview", "index.js")
+      vscode2.Uri.joinPath(this._extensionUri, "dist", "webview", "index.js")
     );
     const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, "dist", "webview", "index.css")
+      vscode2.Uri.joinPath(this._extensionUri, "dist", "webview", "index.css")
     );
     const nonce = getNonce();
     return (
@@ -10507,58 +10583,33 @@ function getNonce() {
 }
 
 // src/extension.ts
-var diagramProvider;
 function activate(context) {
   console.log("Noise DBML extension activated");
-  diagramProvider = new DiagramPanelProvider(context.extensionUri);
+  const fileProvider = new DbmlFileProvider();
+  const treeView = vscode3.window.createTreeView(
+    DbmlFileProvider.viewType,
+    {
+      treeDataProvider: fileProvider,
+      showCollapseAll: false
+    }
+  );
+  context.subscriptions.push(treeView, fileProvider);
+  const diagramTabProvider = new DiagramTabProvider(context.extensionUri);
   context.subscriptions.push(
-    vscode2.window.registerWebviewViewProvider(
-      DiagramPanelProvider.viewType,
-      diagramProvider,
-      {
-        webviewOptions: {
-          retainContextWhenHidden: true
+    vscode3.commands.registerCommand(
+      "noiseDbml.seeDiagram",
+      (item) => {
+        if (item?.resourceUri) {
+          diagramTabProvider.openForFile(item.resourceUri);
         }
       }
     )
   );
   context.subscriptions.push(
-    vscode2.commands.registerCommand("noiseDbml.openDiagram", () => {
-      vscode2.commands.executeCommand("noiseDbml.diagramView.focus");
+    vscode3.commands.registerCommand("noiseDbml.refreshFileList", () => {
+      fileProvider.refresh();
     })
   );
-  context.subscriptions.push(
-    vscode2.commands.registerCommand("noiseDbml.refreshDiagram", () => {
-      diagramProvider.refresh();
-    })
-  );
-  context.subscriptions.push(
-    vscode2.window.onDidChangeActiveTextEditor((editor) => {
-      if (editor && editor.document.languageId === "dbml") {
-        diagramProvider.updateContent(editor.document.getText());
-      }
-    })
-  );
-  let debounceTimer;
-  context.subscriptions.push(
-    vscode2.workspace.onDidChangeTextDocument((event) => {
-      const editor = vscode2.window.activeTextEditor;
-      if (editor && event.document === editor.document && event.document.languageId === "dbml") {
-        if (debounceTimer) {
-          clearTimeout(debounceTimer);
-        }
-        debounceTimer = setTimeout(() => {
-          diagramProvider.updateContent(event.document.getText());
-        }, 300);
-      }
-    })
-  );
-  const activeEditor = vscode2.window.activeTextEditor;
-  if (activeEditor && activeEditor.document.languageId === "dbml") {
-    setTimeout(() => {
-      diagramProvider.updateContent(activeEditor.document.getText());
-    }, 500);
-  }
 }
 function deactivate() {
   console.log("Noise DBML extension deactivated");

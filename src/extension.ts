@@ -3,79 +3,48 @@
 // ============================================================
 
 import * as vscode from 'vscode';
-import { DiagramPanelProvider } from './providers/DiagramPanelProvider';
-
-let diagramProvider: DiagramPanelProvider;
+import { DbmlFileProvider, DbmlFileItem } from './providers/DbmlFileProvider';
+import { DiagramTabProvider } from './providers/DiagramTabProvider';
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Noise DBML extension activated');
 
-  // Register the Webview View Provider for the sidebar panel
-  diagramProvider = new DiagramPanelProvider(context.extensionUri);
+  // ── 1. Register the DBML file tree view in the sidebar ──────────────
+  const fileProvider = new DbmlFileProvider();
 
-  context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      DiagramPanelProvider.viewType,
-      diagramProvider,
-      {
-        webviewOptions: {
-          retainContextWhenHidden: true,
-        },
-      }
-    )
+  const treeView = vscode.window.createTreeView(
+    DbmlFileProvider.viewType,
+    {
+      treeDataProvider: fileProvider,
+      showCollapseAll: false,
+    },
   );
 
-  // Register commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand('noiseDbml.openDiagram', () => {
-      // Focus the sidebar
-      vscode.commands.executeCommand('noiseDbml.diagramView.focus');
-    })
-  );
+  context.subscriptions.push(treeView, fileProvider);
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand('noiseDbml.refreshDiagram', () => {
-      diagramProvider.refresh();
-    })
-  );
+  // ── 2. Diagram tab provider ──────────────────────────────────────────
+  const diagramTabProvider = new DiagramTabProvider(context.extensionUri);
 
-  // Listen for active editor changes
-  context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor((editor) => {
-      if (editor && editor.document.languageId === 'dbml') {
-        diagramProvider.updateContent(editor.document.getText());
-      }
-    })
-  );
+  // ── 3. Commands ──────────────────────────────────────────────────────
 
-  // Listen for document content changes with debounce
-  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  // Command triggered from the tree-item inline / context menu
   context.subscriptions.push(
-    vscode.workspace.onDidChangeTextDocument((event) => {
-      const editor = vscode.window.activeTextEditor;
-      if (
-        editor &&
-        event.document === editor.document &&
-        event.document.languageId === 'dbml'
-      ) {
-        if (debounceTimer) {
-          clearTimeout(debounceTimer);
+    vscode.commands.registerCommand(
+      'noiseDbml.seeDiagram',
+      (item: DbmlFileItem) => {
+        if (item?.resourceUri) {
+          diagramTabProvider.openForFile(item.resourceUri);
         }
-        debounceTimer = setTimeout(() => {
-          diagramProvider.updateContent(event.document.getText());
-        }, 300);
-      }
-    })
+      },
+    ),
   );
 
-  // If there's already an active DBML editor, parse it immediately
-  const activeEditor = vscode.window.activeTextEditor;
-  if (activeEditor && activeEditor.document.languageId === 'dbml') {
-    // Small delay to let the webview initialize
-    setTimeout(() => {
-      diagramProvider.updateContent(activeEditor.document.getText());
-    }, 500);
-  }
+  // Refresh the file list
+  context.subscriptions.push(
+    vscode.commands.registerCommand('noiseDbml.refreshFileList', () => {
+      fileProvider.refresh();
+    }),
+  );
 }
 
 export function deactivate() {
