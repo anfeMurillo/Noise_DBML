@@ -143,6 +143,17 @@ class DbmlAstVisitor extends BaseCstVisitor {
     if (ctx.DoubleQuoteString) {
       return ctx.DoubleQuoteString[0].image.slice(1, -1);
     }
+    // Handle keyword tokens used as column names
+    const keywordTokens = [
+      'Name', 'Type', 'Note', 'Check', 'Delete', 'Update',
+      'Default', 'Color', 'Null', 'Unique', 'Cascade',
+      'Restrict', 'Hash', 'True', 'False',
+    ];
+    for (const kw of keywordTokens) {
+      if (ctx[kw]) {
+        return ctx[kw][0].image;
+      }
+    }
     return '';
   }
 
@@ -447,8 +458,15 @@ class DbmlAstVisitor extends BaseCstVisitor {
 
   // ---- TableGroup ----
   tableGroupDef(ctx: any): TableGroupNode {
+    let groupName = '';
+    if (ctx.quotedGroupName) {
+      groupName = ctx.quotedGroupName[0].image.slice(1, -1);
+    } else if (ctx.groupName) {
+      groupName = ctx.groupName[0].image;
+    }
+
     const group: TableGroupNode = {
-      name: ctx.groupName[0].image,
+      name: groupName,
       tables: [],
     };
 
@@ -459,7 +477,10 @@ class DbmlAstVisitor extends BaseCstVisitor {
     }
 
     if (ctx.groupTable) {
-      group.tables = ctx.groupTable.map((t: IToken) => t.image);
+      group.tables = ctx.groupTable.map((t: CstNode) => {
+        const qName = this.visit(t);
+        return qName.schema ? `${qName.schema}.${qName.name}` : qName.name;
+      });
     }
 
     if (ctx.noteDef) {

@@ -101,6 +101,22 @@ export class DbmlParser extends CstParser {
     this.OR([
       { ALT: () => this.CONSUME(Identifier) },
       { ALT: () => this.CONSUME(DoubleQuoteString) },
+      // Keywords that may also appear as column names
+      { ALT: () => this.CONSUME(Name) },
+      { ALT: () => this.CONSUME(Type) },
+      { ALT: () => this.CONSUME(Note) },
+      { ALT: () => this.CONSUME(Check) },
+      { ALT: () => this.CONSUME(Delete) },
+      { ALT: () => this.CONSUME(Update) },
+      { ALT: () => this.CONSUME(Default) },
+      { ALT: () => this.CONSUME(Color) },
+      { ALT: () => this.CONSUME(Null) },
+      { ALT: () => this.CONSUME(Unique) },
+      { ALT: () => this.CONSUME(Cascade) },
+      { ALT: () => this.CONSUME(Restrict) },
+      { ALT: () => this.CONSUME(Hash) },
+      { ALT: () => this.CONSUME(True) },
+      { ALT: () => this.CONSUME(False) },
     ]);
   });
 
@@ -420,15 +436,18 @@ export class DbmlParser extends CstParser {
   // ---- TableGroup ----
   private tableGroupDef = this.RULE('tableGroupDef', () => {
     this.CONSUME(TableGroup);
-    this.CONSUME(Identifier, { LABEL: 'groupName' });
+    this.OR([
+      { ALT: () => this.CONSUME(DoubleQuoteString, { LABEL: 'quotedGroupName' }) },
+      { ALT: () => this.CONSUME(Identifier, { LABEL: 'groupName' }) },
+    ]);
     this.OPTION(() => {
       this.SUBRULE(this.settingsBlock, { LABEL: 'groupSettings' });
     });
     this.CONSUME(LCurly);
     this.MANY(() => {
-      this.OR([
+      this.OR2([
         { ALT: () => this.SUBRULE(this.noteDef) },
-        { ALT: () => this.CONSUME2(Identifier, { LABEL: 'groupTable' }) },
+        { ALT: () => this.SUBRULE(this.qualifiedName, { LABEL: 'groupTable' }) },
       ]);
     });
     this.CONSUME(RCurly);

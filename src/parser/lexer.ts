@@ -24,51 +24,51 @@ export const BlockComment = createToken({
 });
 
 // ---- Keywords ----
-export const Table = createToken({ name: 'Table', pattern: /Table\b/, longer_alt: undefined });
-export const Project = createToken({ name: 'Project', pattern: /Project\b/ });
+export const Table = createToken({ name: 'Table', pattern: /Table\b/i, longer_alt: undefined });
+export const Project = createToken({ name: 'Project', pattern: /Project\b/i });
 export const Enum = createToken({ name: 'Enum', pattern: /enum\b/i });
-export const Ref = createToken({ name: 'Ref', pattern: /Ref\b/ });
+export const Ref = createToken({ name: 'Ref', pattern: /Ref\b/i });
 export const TableGroup = createToken({ name: 'TableGroup', pattern: /TableGroup\b/i });
-export const TablePartial = createToken({ name: 'TablePartial', pattern: /TablePartial\b/ });
-export const Note = createToken({ name: 'Note', pattern: /Note\b/ });
-export const As = createToken({ name: 'As', pattern: /as\b/ });
-export const Indexes = createToken({ name: 'Indexes', pattern: /indexes\b/ });
-export const Checks = createToken({ name: 'Checks', pattern: /checks\b/ });
-export const Records = createToken({ name: 'Records', pattern: /records\b/ });
+export const TablePartial = createToken({ name: 'TablePartial', pattern: /TablePartial\b/i });
+export const Note = createToken({ name: 'Note', pattern: /Note\b/i });
+export const As = createToken({ name: 'As', pattern: /as\b/i });
+export const Indexes = createToken({ name: 'Indexes', pattern: /indexes\b/i });
+export const Checks = createToken({ name: 'Checks', pattern: /checks\b/i });
+export const Records = createToken({ name: 'Records', pattern: /records\b/i });
 
 // ---- Column Settings Keywords ----
-export const PrimaryKey = createToken({ name: 'PrimaryKey', pattern: /primary\s+key\b/ });
-export const Pk = createToken({ name: 'Pk', pattern: /pk\b/ });
-export const NotNull = createToken({ name: 'NotNull', pattern: /not\s+null\b/ });
-export const Null = createToken({ name: 'Null', pattern: /null\b/ });
-export const Unique = createToken({ name: 'Unique', pattern: /unique\b/ });
-export const Increment = createToken({ name: 'Increment', pattern: /increment\b/ });
-export const Default = createToken({ name: 'Default', pattern: /default\b/ });
-export const Check = createToken({ name: 'Check', pattern: /check\b/ });
+export const PrimaryKey = createToken({ name: 'PrimaryKey', pattern: /primary\s+key\b/i });
+export const Pk = createToken({ name: 'Pk', pattern: /pk\b/i });
+export const NotNull = createToken({ name: 'NotNull', pattern: /not\s+null\b/i });
+export const Null = createToken({ name: 'Null', pattern: /null\b/i });
+export const Unique = createToken({ name: 'Unique', pattern: /unique\b/i });
+export const Increment = createToken({ name: 'Increment', pattern: /increment\b/i });
+export const Default = createToken({ name: 'Default', pattern: /default\b/i });
+export const Check = createToken({ name: 'Check', pattern: /check\b/i });
 
 // ---- Relationship Settings ----
-export const Delete = createToken({ name: 'Delete', pattern: /delete\b/ });
-export const Update = createToken({ name: 'Update', pattern: /update\b/ });
-export const Cascade = createToken({ name: 'Cascade', pattern: /cascade\b/ });
-export const Restrict = createToken({ name: 'Restrict', pattern: /restrict\b/ });
-export const SetNull = createToken({ name: 'SetNull', pattern: /set\s+null\b/ });
-export const SetDefault = createToken({ name: 'SetDefault', pattern: /set\s+default\b/ });
-export const NoAction = createToken({ name: 'NoAction', pattern: /no\s+action\b/ });
+export const Delete = createToken({ name: 'Delete', pattern: /delete\b/i });
+export const Update = createToken({ name: 'Update', pattern: /update\b/i });
+export const Cascade = createToken({ name: 'Cascade', pattern: /cascade\b/i });
+export const Restrict = createToken({ name: 'Restrict', pattern: /restrict\b/i });
+export const SetNull = createToken({ name: 'SetNull', pattern: /set\s+null\b/i });
+export const SetDefault = createToken({ name: 'SetDefault', pattern: /set\s+default\b/i });
+export const NoAction = createToken({ name: 'NoAction', pattern: /no\s+action\b/i });
 
 // ---- Index Settings ----
-export const Type = createToken({ name: 'Type', pattern: /type\b/ });
-export const Name = createToken({ name: 'Name', pattern: /name\b/ });
-export const Btree = createToken({ name: 'Btree', pattern: /btree\b/ });
-export const Hash = createToken({ name: 'Hash', pattern: /hash\b/ });
+export const Type = createToken({ name: 'Type', pattern: /type\b/i });
+export const Name = createToken({ name: 'Name', pattern: /name\b/i });
+export const Btree = createToken({ name: 'Btree', pattern: /btree\b/i });
+export const Hash = createToken({ name: 'Hash', pattern: /hash\b/i });
 
 // ---- Property Keywords ----
-export const DatabaseType = createToken({ name: 'DatabaseType', pattern: /database_type\b/ });
+export const DatabaseType = createToken({ name: 'DatabaseType', pattern: /database_type\b/i });
 export const HeaderColor = createToken({ name: 'HeaderColor', pattern: /headercolor\b/i });
-export const Color = createToken({ name: 'Color', pattern: /color\b/ });
+export const Color = createToken({ name: 'Color', pattern: /color\b/i });
 
 // ---- Booleans ----
-export const True = createToken({ name: 'True', pattern: /true\b/ });
-export const False = createToken({ name: 'False', pattern: /false\b/ });
+export const True = createToken({ name: 'True', pattern: /true\b/i });
+export const False = createToken({ name: 'False', pattern: /false\b/i });
 
 // ---- Relationship Operators ----
 export const ManyToMany = createToken({ name: 'ManyToMany', pattern: /<>/ });

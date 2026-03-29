@@ -9389,41 +9389,41 @@ var BlockComment = createToken({
   pattern: /\/\*[\s\S]*?\*\//,
   group: "comments"
 });
-var Table = createToken({ name: "Table", pattern: /Table\b/, longer_alt: void 0 });
-var Project = createToken({ name: "Project", pattern: /Project\b/ });
+var Table = createToken({ name: "Table", pattern: /Table\b/i, longer_alt: void 0 });
+var Project = createToken({ name: "Project", pattern: /Project\b/i });
 var Enum = createToken({ name: "Enum", pattern: /enum\b/i });
-var Ref = createToken({ name: "Ref", pattern: /Ref\b/ });
+var Ref = createToken({ name: "Ref", pattern: /Ref\b/i });
 var TableGroup = createToken({ name: "TableGroup", pattern: /TableGroup\b/i });
-var TablePartial = createToken({ name: "TablePartial", pattern: /TablePartial\b/ });
-var Note = createToken({ name: "Note", pattern: /Note\b/ });
-var As = createToken({ name: "As", pattern: /as\b/ });
-var Indexes = createToken({ name: "Indexes", pattern: /indexes\b/ });
-var Checks = createToken({ name: "Checks", pattern: /checks\b/ });
-var Records = createToken({ name: "Records", pattern: /records\b/ });
-var PrimaryKey = createToken({ name: "PrimaryKey", pattern: /primary\s+key\b/ });
-var Pk = createToken({ name: "Pk", pattern: /pk\b/ });
-var NotNull = createToken({ name: "NotNull", pattern: /not\s+null\b/ });
-var Null = createToken({ name: "Null", pattern: /null\b/ });
-var Unique = createToken({ name: "Unique", pattern: /unique\b/ });
-var Increment = createToken({ name: "Increment", pattern: /increment\b/ });
-var Default = createToken({ name: "Default", pattern: /default\b/ });
-var Check = createToken({ name: "Check", pattern: /check\b/ });
-var Delete = createToken({ name: "Delete", pattern: /delete\b/ });
-var Update = createToken({ name: "Update", pattern: /update\b/ });
-var Cascade = createToken({ name: "Cascade", pattern: /cascade\b/ });
-var Restrict = createToken({ name: "Restrict", pattern: /restrict\b/ });
-var SetNull = createToken({ name: "SetNull", pattern: /set\s+null\b/ });
-var SetDefault = createToken({ name: "SetDefault", pattern: /set\s+default\b/ });
-var NoAction = createToken({ name: "NoAction", pattern: /no\s+action\b/ });
-var Type = createToken({ name: "Type", pattern: /type\b/ });
-var Name = createToken({ name: "Name", pattern: /name\b/ });
-var Btree = createToken({ name: "Btree", pattern: /btree\b/ });
-var Hash2 = createToken({ name: "Hash", pattern: /hash\b/ });
-var DatabaseType = createToken({ name: "DatabaseType", pattern: /database_type\b/ });
+var TablePartial = createToken({ name: "TablePartial", pattern: /TablePartial\b/i });
+var Note = createToken({ name: "Note", pattern: /Note\b/i });
+var As = createToken({ name: "As", pattern: /as\b/i });
+var Indexes = createToken({ name: "Indexes", pattern: /indexes\b/i });
+var Checks = createToken({ name: "Checks", pattern: /checks\b/i });
+var Records = createToken({ name: "Records", pattern: /records\b/i });
+var PrimaryKey = createToken({ name: "PrimaryKey", pattern: /primary\s+key\b/i });
+var Pk = createToken({ name: "Pk", pattern: /pk\b/i });
+var NotNull = createToken({ name: "NotNull", pattern: /not\s+null\b/i });
+var Null = createToken({ name: "Null", pattern: /null\b/i });
+var Unique = createToken({ name: "Unique", pattern: /unique\b/i });
+var Increment = createToken({ name: "Increment", pattern: /increment\b/i });
+var Default = createToken({ name: "Default", pattern: /default\b/i });
+var Check = createToken({ name: "Check", pattern: /check\b/i });
+var Delete = createToken({ name: "Delete", pattern: /delete\b/i });
+var Update = createToken({ name: "Update", pattern: /update\b/i });
+var Cascade = createToken({ name: "Cascade", pattern: /cascade\b/i });
+var Restrict = createToken({ name: "Restrict", pattern: /restrict\b/i });
+var SetNull = createToken({ name: "SetNull", pattern: /set\s+null\b/i });
+var SetDefault = createToken({ name: "SetDefault", pattern: /set\s+default\b/i });
+var NoAction = createToken({ name: "NoAction", pattern: /no\s+action\b/i });
+var Type = createToken({ name: "Type", pattern: /type\b/i });
+var Name = createToken({ name: "Name", pattern: /name\b/i });
+var Btree = createToken({ name: "Btree", pattern: /btree\b/i });
+var Hash2 = createToken({ name: "Hash", pattern: /hash\b/i });
+var DatabaseType = createToken({ name: "DatabaseType", pattern: /database_type\b/i });
 var HeaderColor = createToken({ name: "HeaderColor", pattern: /headercolor\b/i });
-var Color = createToken({ name: "Color", pattern: /color\b/ });
-var True = createToken({ name: "True", pattern: /true\b/ });
-var False = createToken({ name: "False", pattern: /false\b/ });
+var Color = createToken({ name: "Color", pattern: /color\b/i });
+var True = createToken({ name: "True", pattern: /true\b/i });
+var False = createToken({ name: "False", pattern: /false\b/i });
 var ManyToMany = createToken({ name: "ManyToMany", pattern: /<>/ });
 var LessThan = createToken({ name: "LessThan", pattern: /</ });
 var GreaterThan = createToken({ name: "GreaterThan", pattern: />/ });
@@ -9613,7 +9613,23 @@ var DbmlParser = class extends CstParser {
     this.columnName = this.RULE("columnName", () => {
       this.OR([
         { ALT: () => this.CONSUME(Identifier) },
-        { ALT: () => this.CONSUME(DoubleQuoteString) }
+        { ALT: () => this.CONSUME(DoubleQuoteString) },
+        // Keywords that may also appear as column names
+        { ALT: () => this.CONSUME(Name) },
+        { ALT: () => this.CONSUME(Type) },
+        { ALT: () => this.CONSUME(Note) },
+        { ALT: () => this.CONSUME(Check) },
+        { ALT: () => this.CONSUME(Delete) },
+        { ALT: () => this.CONSUME(Update) },
+        { ALT: () => this.CONSUME(Default) },
+        { ALT: () => this.CONSUME(Color) },
+        { ALT: () => this.CONSUME(Null) },
+        { ALT: () => this.CONSUME(Unique) },
+        { ALT: () => this.CONSUME(Cascade) },
+        { ALT: () => this.CONSUME(Restrict) },
+        { ALT: () => this.CONSUME(Hash2) },
+        { ALT: () => this.CONSUME(True) },
+        { ALT: () => this.CONSUME(False) }
       ]);
     });
     this.columnType = this.RULE("columnType", () => {
@@ -9903,15 +9919,18 @@ var DbmlParser = class extends CstParser {
     // ---- TableGroup ----
     this.tableGroupDef = this.RULE("tableGroupDef", () => {
       this.CONSUME(TableGroup);
-      this.CONSUME(Identifier, { LABEL: "groupName" });
+      this.OR([
+        { ALT: () => this.CONSUME(DoubleQuoteString, { LABEL: "quotedGroupName" }) },
+        { ALT: () => this.CONSUME(Identifier, { LABEL: "groupName" }) }
+      ]);
       this.OPTION(() => {
         this.SUBRULE(this.settingsBlock, { LABEL: "groupSettings" });
       });
       this.CONSUME(LCurly);
       this.MANY(() => {
-        this.OR([
+        this.OR2([
           { ALT: () => this.SUBRULE(this.noteDef) },
-          { ALT: () => this.CONSUME2(Identifier, { LABEL: "groupTable" }) }
+          { ALT: () => this.SUBRULE(this.qualifiedName, { LABEL: "groupTable" }) }
         ]);
       });
       this.CONSUME(RCurly);
@@ -10108,6 +10127,28 @@ var DbmlAstVisitor = class extends BaseCstVisitor {
     }
     if (ctx.DoubleQuoteString) {
       return ctx.DoubleQuoteString[0].image.slice(1, -1);
+    }
+    const keywordTokens = [
+      "Name",
+      "Type",
+      "Note",
+      "Check",
+      "Delete",
+      "Update",
+      "Default",
+      "Color",
+      "Null",
+      "Unique",
+      "Cascade",
+      "Restrict",
+      "Hash",
+      "True",
+      "False"
+    ];
+    for (const kw of keywordTokens) {
+      if (ctx[kw]) {
+        return ctx[kw][0].image;
+      }
     }
     return "";
   }
@@ -10374,8 +10415,14 @@ var DbmlAstVisitor = class extends BaseCstVisitor {
   }
   // ---- TableGroup ----
   tableGroupDef(ctx) {
+    let groupName = "";
+    if (ctx.quotedGroupName) {
+      groupName = ctx.quotedGroupName[0].image.slice(1, -1);
+    } else if (ctx.groupName) {
+      groupName = ctx.groupName[0].image;
+    }
     const group = {
-      name: ctx.groupName[0].image,
+      name: groupName,
       tables: []
     };
     if (ctx.groupSettings) {
@@ -10384,7 +10431,10 @@ var DbmlAstVisitor = class extends BaseCstVisitor {
       if (s.note) group.note = s.note;
     }
     if (ctx.groupTable) {
-      group.tables = ctx.groupTable.map((t) => t.image);
+      group.tables = ctx.groupTable.map((t) => {
+        const qName = this.visit(t);
+        return qName.schema ? `${qName.schema}.${qName.name}` : qName.name;
+      });
     }
     if (ctx.noteDef) {
       group.note = this.visit(ctx.noteDef[0]);
