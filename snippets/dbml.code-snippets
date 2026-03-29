@@ -1,0 +1,248 @@
+{
+  "Table": {
+    "prefix": "table",
+    "body": [
+      "Table ${1:table_name} {",
+      "  ${2:id} integer [pk, increment]",
+      "  ${3:name} varchar(255) [not null]",
+      "  ${4:created_at} timestamp [default: `now()`]",
+      "  $0",
+      "}"
+    ],
+    "description": "Create a new DBML table definition"
+  },
+  "Table with Schema": {
+    "prefix": "tables",
+    "body": [
+      "Table ${1:schema_name}.${2:table_name} {",
+      "  ${3:id} integer [pk, increment]",
+      "  ${4:name} varchar(255) [not null]",
+      "  $0",
+      "}"
+    ],
+    "description": "Create a new DBML table with schema prefix"
+  },
+  "Table with Alias": {
+    "prefix": "tablea",
+    "body": [
+      "Table ${1:table_name} as ${2:T} {",
+      "  ${3:id} integer [pk, increment]",
+      "  $0",
+      "}"
+    ],
+    "description": "Create a new DBML table with alias"
+  },
+  "Column": {
+    "prefix": "col",
+    "body": [
+      "${1:column_name} ${2:varchar(255)} [${3:not null}]"
+    ],
+    "description": "Add a column with type and settings"
+  },
+  "Column Primary Key": {
+    "prefix": "colpk",
+    "body": [
+      "${1:id} ${2:integer} [pk, increment]"
+    ],
+    "description": "Add a primary key column with auto-increment"
+  },
+  "Column Foreign Key": {
+    "prefix": "colfk",
+    "body": [
+      "${1:user_id} integer [ref: > ${2:users}.${3:id}]"
+    ],
+    "description": "Add a foreign key column with inline reference"
+  },
+  "Column with Default": {
+    "prefix": "cold",
+    "body": [
+      "${1:column_name} ${2:varchar(255)} [not null, default: ${3:'value'}]"
+    ],
+    "description": "Add a column with a default value"
+  },
+  "Column Timestamp": {
+    "prefix": "colts",
+    "body": [
+      "${1:created_at} timestamp [not null, default: `now()`]"
+    ],
+    "description": "Add a timestamp column with now() default"
+  },
+  "Enum": {
+    "prefix": "enum",
+    "body": [
+      "enum ${1:enum_name} {",
+      "  ${2:value1}",
+      "  ${3:value2}",
+      "  ${4:value3}",
+      "  $0",
+      "}"
+    ],
+    "description": "Create a new DBML enum definition"
+  },
+  "Enum Value with Note": {
+    "prefix": "enumv",
+    "body": [
+      "${1:value} [note: '${2:description}']"
+    ],
+    "description": "Add an enum value with a note"
+  },
+  "Ref Short": {
+    "prefix": "ref",
+    "body": [
+      "Ref: ${1:table1}.${2:column1} ${3|>,<,-,<>|} ${4:table2}.${5:column2}"
+    ],
+    "description": "Create a short-form relationship"
+  },
+  "Ref with Settings": {
+    "prefix": "refs",
+    "body": [
+      "Ref: ${1:table1}.${2:column1} ${3|>,<,-,<>|} ${4:table2}.${5:column2} [delete: ${6|cascade,restrict,set null,set default,no action|}, update: ${7|no action,cascade,restrict,set null,set default|}]"
+    ],
+    "description": "Create a relationship with delete/update actions"
+  },
+  "Ref Long": {
+    "prefix": "reflong",
+    "body": [
+      "Ref ${1:ref_name} {",
+      "  ${2:table1}.${3:column1} ${4|>,<,-,<>|} ${5:table2}.${6:column2}",
+      "}"
+    ],
+    "description": "Create a long-form relationship"
+  },
+  "Project": {
+    "prefix": "proj",
+    "body": [
+      "Project ${1:project_name} {",
+      "  database_type: '${2|PostgreSQL,MySQL,MSSQL,SQLite|}'",
+      "  Note: '${3:Project description}'",
+      "}"
+    ],
+    "description": "Create a DBML project definition"
+  },
+  "Project with Multiline Note": {
+    "prefix": "projm",
+    "body": [
+      "Project ${1:project_name} {",
+      "  database_type: '${2|PostgreSQL,MySQL,MSSQL,SQLite|}'",
+      "  Note: '''",
+      "  # ${3:Project Title}",
+      "  ${4:Description of the project.}",
+      "  '''",
+      "}"
+    ],
+    "description": "Create a DBML project with multiline note"
+  },
+  "Indexes": {
+    "prefix": "idx",
+    "body": [
+      "indexes {",
+      "  ${1:column_name} [${2:unique}]",
+      "  $0",
+      "}"
+    ],
+    "description": "Create an indexes block"
+  },
+  "Index Composite": {
+    "prefix": "idxc",
+    "body": [
+      "(${1:col1}, ${2:col2}) [${3|unique,pk|}]"
+    ],
+    "description": "Create a composite index"
+  },
+  "Index Named": {
+    "prefix": "idxn",
+    "body": [
+      "${1:column_name} [name: '${2:index_name}', note: '${3:description}']"
+    ],
+    "description": "Create a named index with a note"
+  },
+  "TablePartial": {
+    "prefix": "partial",
+    "body": [
+      "TablePartial ${1:partial_name} {",
+      "  ${2:id} int [pk, not null]",
+      "  ${3:created_at} timestamp [default: `now()`]",
+      "  ${4:updated_at} timestamp [default: `now()`]",
+      "  $0",
+      "}"
+    ],
+    "description": "Create a reusable TablePartial"
+  },
+  "Use Partial": {
+    "prefix": "usep",
+    "body": [
+      "~${1:partial_name}"
+    ],
+    "description": "Reference a TablePartial inside a table"
+  },
+  "TableGroup": {
+    "prefix": "tgroup",
+    "body": [
+      "TableGroup ${1:group_name} [color: ${2:#3498DB}] {",
+      "  ${3:table1}",
+      "  ${4:table2}",
+      "  $0",
+      "}"
+    ],
+    "description": "Create a TableGroup to organize related tables"
+  },
+  "Note Inline": {
+    "prefix": "note",
+    "body": [
+      "Note: '${1:description}'"
+    ],
+    "description": "Add an inline note"
+  },
+  "Note Multiline": {
+    "prefix": "notemulti",
+    "body": [
+      "Note: '''",
+      "  ${1:Multiline note content.}",
+      "  ${2:Second line.}",
+      "'''"
+    ],
+    "description": "Add a multiline note"
+  },
+  "Sticky Note": {
+    "prefix": "snote",
+    "body": [
+      "Note ${1:note_name} {",
+      "  '''",
+      "  ${2:Floating note content.}",
+      "  '''",
+      "}"
+    ],
+    "description": "Create a sticky/floating note"
+  },
+  "Records Block": {
+    "prefix": "records",
+    "body": [
+      "records ${1:table_name}(${2:col1, col2, col3}) {",
+      "  ${3:1, 'value1', 'value2'}",
+      "  ${4:2, 'value3', 'value4'}",
+      "  $0",
+      "}"
+    ],
+    "description": "Create a data sample records block"
+  },
+  "Records Inner": {
+    "prefix": "recordsi",
+    "body": [
+      "records (${1:col1, col2}) {",
+      "  ${2:1, 'value1'}",
+      "  $0",
+      "}"
+    ],
+    "description": "Create an inner records block within a table"
+  },
+  "Checks Block": {
+    "prefix": "checks",
+    "body": [
+      "checks {",
+      "  `${1:column1 >= 0}` [name: '${2:chk_name}']",
+      "  $0",
+      "}"
+    ],
+    "description": "Create a checks constraint block"
+  }
+}

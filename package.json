@@ -1,0 +1,98 @@
+{
+  "name": "noise-dbml",
+  "displayName": "Noise DBML",
+  "description": "Syntax highlighting, code snippets, and interactive ER diagrams for DBML (Database Markup Language) files.",
+  "version": "0.1.0",
+  "publisher": "noise",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Visualization"
+  ],
+  "icon": "assets/images/icon.png",
+  "activationEvents": [
+    "onLanguage:dbml"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "dbml",
+        "aliases": [
+          "DBML",
+          "dbml",
+          "Database Markup Language"
+        ],
+        "extensions": [
+          ".dbml"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "dbml",
+        "scopeName": "source.dbml",
+        "path": "./syntaxes/dbml.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "dbml",
+        "path": "./snippets/dbml.code-snippets"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "noise-dbml-sidebar",
+          "title": "DBML Diagram",
+          "icon": "$(database)"
+        }
+      ]
+    },
+    "views": {
+      "noise-dbml-sidebar": [
+        {
+          "type": "webview",
+          "id": "noiseDbml.diagramView",
+          "name": "ER Diagram",
+          "contextualTitle": "DBML Diagram"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "noiseDbml.openDiagram",
+        "title": "DBML: Open ER Diagram",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "noiseDbml.refreshDiagram",
+        "title": "DBML: Refresh Diagram",
+        "icon": "$(refresh)"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node esbuild.js --production",
+    "watch": "node esbuild.js --watch",
+    "build:webview": "cd webview && npm run build",
+    "prepackage": "npm run build:webview && npm run build",
+    "lint": "eslint src --ext ts"
+  },
+  "dependencies": {
+    "chevrotain": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.4.0"
+  }
+}
