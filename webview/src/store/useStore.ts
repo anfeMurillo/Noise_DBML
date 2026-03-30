@@ -84,36 +84,47 @@ const FOOTER_NOTE_HEIGHT = 42;
 const COLLAPSED_WIDTH = 220;
 const COLLAPSED_HEIGHT = 64;
 
-function getNodeHeight(node: Node): number {
+function getNodeHeight(node: Node, detailLevel: DetailLevel = 'all-fields'): number {
   const type = node.type || 'tableNode';
   const data = node.data as any;
   
+  if (type === 'tableNode' && detailLevel === 'table-names') {
+    return TABLE_HEADER_HEIGHT;
+  }
+
   const baseHeight = type === 'tableNode' ? TABLE_HEADER_HEIGHT : 36;
   const rowHeight = type === 'tableNode' ? TABLE_ROW_HEIGHT : ENUM_ROW_HEIGHT;
-  const itemCount = type === 'tableNode' ? (data.columns?.length || 0) : (data.values?.length || 0);
   
-  let height = baseHeight + Math.max(1, itemCount) * rowHeight + 8;
+  let columns = data.columns || [];
+  if (type === 'tableNode' && detailLevel === 'keys-only') {
+    columns = columns.filter((col: any) => col.settings?.primaryKey || col.settings?.ref);
+  }
+  
+  const itemCount = type === 'tableNode' ? (columns.length || 0) : (data.values?.length || 0);
+  let height = baseHeight + (itemCount > 0 ? itemCount * rowHeight + 8 : (type === 'tableNode' ? 40 : 8));
 
   if (type === 'tableNode') {
-    if (data.indexes && data.indexes.length > 0) {
-      height += INDEX_SECTION_BASE_HEIGHT + (data.indexes.length * INDEX_ROW_HEIGHT);
-    }
-    if (data.note) {
-      height += FOOTER_NOTE_HEIGHT;
+    if (detailLevel === 'all-fields') {
+      if (data.indexes && data.indexes.length > 0) {
+        height += INDEX_SECTION_BASE_HEIGHT + (data.indexes.length * INDEX_ROW_HEIGHT);
+      }
+      if (data.note) {
+        height += FOOTER_NOTE_HEIGHT;
+      }
     }
   } else if (type === 'stickyNoteNode') {
-    height = (node.style as any)?.height || 200;
+    height = (node as any).style?.height || 200;
   }
 
   return height;
 }
 
 // ---- Bounding-box helpers ----
-function calcBoundingBox(nodes: Node[]): { x: number; y: number; width: number; height: number } {
+function calcBoundingBox(nodes: Node[], detailLevel?: DetailLevel): { x: number; y: number; width: number; height: number } {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of nodes) {
     const w = (n.measured?.width) ?? NODE_WIDTH;
-    const h = (n.measured?.height) ?? getNodeHeight(n);
+    const h = (n.measured?.height) ?? getNodeHeight(n, detailLevel);
     minX = Math.min(minX, n.position.x);
     minY = Math.min(minY, n.position.y);
     maxX = Math.max(maxX, n.position.x + w);
@@ -145,7 +156,7 @@ function recalcGroupBounds(
         y: bounds.y - GROUP_HEADER_HEIGHT - GROUP_PADDING,
       },
       style: {
-        ...(n.style || {}),
+        ...((n as any).style || {}),
         width: bounds.width + GROUP_PADDING * 2,
         height: bounds.height + GROUP_HEADER_HEIGHT + GROUP_PADDING * 2,
       },
@@ -155,7 +166,7 @@ function recalcGroupBounds(
 
 // ---- Dagre Layout ----
 // ---- Dagre Layout (Left-to-Right) ----
-function applyLeftRightLayout(nodes: Node[], edges: Edge[]): Node[] {
+function applyLeftRightLayout(nodes: Node[], edges: Edge[], detailLevel?: DetailLevel): Node[] {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
@@ -168,7 +179,7 @@ function applyLeftRightLayout(nodes: Node[], edges: Edge[]): Node[] {
   });
 
   for (const node of nodes) {
-    const height = getNodeHeight(node);
+    const height = getNodeHeight(node, detailLevel);
     g.setNode(node.id, { width: NODE_WIDTH, height });
   }
 
@@ -194,7 +205,7 @@ function applyLeftRightLayout(nodes: Node[], edges: Edge[]): Node[] {
 }
 
 // ---- Snowflake Layout (Central Hubs) ----
-function applySnowflakeLayout(nodes: Node[], edges: Edge[]): Node[] {
+function applySnowflakeLayout(nodes: Node[], edges: Edge[], detailLevel?: DetailLevel): Node[] {
   if (nodes.length === 0) return nodes;
 
   // 1. Calculate connectivity degree for each node
@@ -229,7 +240,7 @@ function applySnowflakeLayout(nodes: Node[], edges: Edge[]): Node[] {
       ...node,
       position: {
         x: centerX + radius * Math.cos(angle) - NODE_WIDTH / 2,
-        y: centerY + radius * Math.sin(angle) - (getNodeHeight(node) / 2),
+        y: centerY + radius * Math.sin(angle) - (getNodeHeight(node, detailLevel) / 2),
       },
     };
   });
@@ -289,6 +300,8 @@ function getEdgeMarkers(type: string) {
   return base;
 }
 
+export type DetailLevel = 'table-names' | 'keys-only' | 'all-fields';
+
 // ---- Store Definition ----
 interface DiagramState {
   nodes: Node[];
@@ -296,6 +309,7 @@ interface DiagramState {
   schema: DbmlSchema | null;
   groupMembership: Record<string, string>;   // tableNodeId → groupNodeId
   collapsedGroups: Record<string, boolean>;   // groupNodeId → true
+  detailLevel: DetailLevel;
 
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
@@ -306,6 +320,7 @@ interface DiagramState {
   ) => void;
   toggleGroupCollapse: (groupId: string) => void;
   adjustLayout: (algorithm?: 'left-right' | 'snowflake' | 'compact') => void;
+  setDetailLevel: (level: DetailLevel) => void;
   
   // -- Sticky Note Actions --
   addStickyNote: (position: { x: number; y: number }) => void;
@@ -321,12 +336,13 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   schema: null,
   groupMembership: {},
   collapsedGroups: {},
+  detailLevel: 'all-fields',
 
   // ──────────────────────────────────────────────
   // Manual Layout Trigger
   // ──────────────────────────────────────────────
   adjustLayout: (algorithm = 'left-right') => {
-    const { nodes, edges, groupMembership } = get();
+    const { nodes, edges, groupMembership, detailLevel } = get();
     if (!nodes.length) return;
 
     // 1. Separate groups and sticky notes from basic nodes
@@ -337,14 +353,14 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     
     switch (algorithm) {
       case 'snowflake':
-        layoutedBasicNodes = applySnowflakeLayout(basicNodes, edges);
+        layoutedBasicNodes = applySnowflakeLayout(basicNodes, edges, detailLevel);
         break;
       case 'compact':
         layoutedBasicNodes = applyCompactLayout(basicNodes);
         break;
       case 'left-right':
       default:
-        layoutedBasicNodes = applyLeftRightLayout(basicNodes, edges);
+        layoutedBasicNodes = applyLeftRightLayout(basicNodes, edges, detailLevel);
         break;
     }
     
@@ -456,8 +472,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         x: n.position.x,
         y: n.position.y,
         text: (n.data as any).text,
-        width: (n.style as any)?.width,
-        height: (n.style as any)?.height,
+        width: (n as any).style?.width,
+        height: (n as any).style?.height,
     }));
     
     // Always update sticky notes if there's any change related to them (like dragging or content update)
@@ -740,7 +756,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
           return {
             ...node,
             data: { ...node.data, collapsed: true },
-            style: { ...node.style, width: COLLAPSED_WIDTH, height: COLLAPSED_HEIGHT },
+            style: { ...((node as any).style || {}), width: COLLAPSED_WIDTH, height: COLLAPSED_HEIGHT },
           };
         }
         return { ...node, data: { ...node.data, collapsed: false } };
@@ -791,8 +807,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         x: n.position.x,
         y: n.position.y,
         text: (n.data as any).text,
-        width: (n.style as any)?.width,
-        height: (n.style as any)?.height,
+        width: (n as any).style?.width,
+        height: (n as any).style?.height,
       }));
     getVsCodeApi().postMessage({ type: 'updateStickyNotes', stickyNotes: stickyNotesData });
   },
@@ -809,9 +825,9 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
             ? { x: data.x ?? node.position.x, y: data.y ?? node.position.y }
             : node.position,
           style: {
-            ...node.style,
-            width: data.width ?? (node.style as any)?.width,
-            height: data.height ?? (node.style as any)?.height,
+            ...((node as any).style || {}),
+            width: data.width ?? (node as any).style?.width,
+            height: data.height ?? (node as any).style?.height,
           },
           data: newData,
         };
@@ -829,8 +845,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         x: n.position.x,
         y: n.position.y,
         text: (n.data as any).text,
-        width: (n.style as any)?.width,
-        height: (n.style as any)?.height,
+        width: (n as any).style?.width,
+        height: (n as any).style?.height,
       }));
     getVsCodeApi().postMessage({ type: 'updateStickyNotes', stickyNotes: stickyNotesData });
   },
@@ -847,9 +863,13 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         x: n.position.x,
         y: n.position.y,
         text: (n.data as any).text,
-        width: (n.style as any)?.width,
-        height: (n.style as any)?.height,
+        width: (n as any).style?.width,
+        height: (n as any).style?.height,
       }));
     getVsCodeApi().postMessage({ type: 'updateStickyNotes', stickyNotes: stickyNotesData });
+  },
+
+  setDetailLevel: (level: DetailLevel) => {
+    set({ detailLevel: level });
   },
 }));

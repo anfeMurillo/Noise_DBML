@@ -90,6 +90,7 @@ html, body, #root {
 
 /* ---- Table Node ---- */
 .table-node {
+  position: relative;
   min-width: 220px;
   max-width: 340px;
   background: var(--node-bg);
@@ -454,6 +455,25 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.toolbar-divider {
+  height: 1px;
+  background: var(--node-border);
+  margin: 4px 0;
+  opacity: 0.5;
+}
+
+.detail-menu {
+  width: 260px !important;
+}
+
+.table-node--names-only {
+  min-width: 160px;
+}
+
+.table-node--names-only .table-node__header {
+  border-radius: 7px;
 }
 
 .toolbar-btn {

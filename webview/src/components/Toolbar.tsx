@@ -49,20 +49,67 @@ const IconStickyNote = () => (
   </svg>
 );
 
+const IconTableNames = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M3 9h18" />
+  </svg>
+);
+
+const IconKeysOnly = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="7.5" cy="15.5" r="5.5" />
+    <path d="m21 2-9.6 12.1" />
+    <path d="m19 10 2-2" />
+    <path d="m16 7 2-2" />
+  </svg>
+);
+
+const IconAllFields = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M3 9h18" />
+    <path d="M3 14h18" />
+    <path d="M3 19h18" />
+    <path d="M9 9v10" />
+  </svg>
+);
+
+const IconCheck = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+const IconChevronUp = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m18 15-6-6-6 6"/>
+    </svg>
+);
+
 export default function Toolbar() {
   const adjustLayout = useDiagramStore((s) => s.adjustLayout);
   const addStickyNote = useDiagramStore((s) => s.addStickyNote);
+  const detailLevel = useDiagramStore((s) => s.detailLevel);
+  const setDetailLevel = useDiagramStore((s) => s.setDetailLevel);
+
   const { getNodes, screenToFlowPosition, getViewport } = useReactFlow();
   const { postMessage } = useVSCodeMessaging(() => {});
   
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [arrangeMenuOpen, setArrangeMenuOpen] = useState(false);
+  const [detailMenuOpen, setDetailMenuOpen] = useState(false);
+  
+  const arrangeMenuRef = useRef<HTMLDivElement>(null);
+  const detailMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
+      if (arrangeMenuRef.current && !arrangeMenuRef.current.contains(event.target as Node)) {
+        setArrangeMenuOpen(false);
+      }
+      if (detailMenuRef.current && !detailMenuRef.current.contains(event.target as Node)) {
+        setDetailMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -71,8 +118,13 @@ export default function Toolbar() {
 
   const onSelectAlgorithm = React.useCallback((algo: 'left-right' | 'snowflake' | 'compact') => {
     adjustLayout(algo);
-    setMenuOpen(false);
+    setArrangeMenuOpen(false);
   }, [adjustLayout]);
+
+  const onSelectDetailLevel = (level: 'table-names' | 'keys-only' | 'all-fields') => {
+    setDetailLevel(level);
+    setDetailMenuOpen(false);
+  };
 
   // Keyboard shortcuts for algorithms
   useEffect(() => {
@@ -150,20 +202,92 @@ export default function Toolbar() {
     addStickyNote({ x: center.x - 100, y: center.y - 100 });
   };
 
+  const getDetailLevelLabel = () => {
+    switch (detailLevel) {
+      case 'table-names': return 'Table names';
+      case 'keys-only': return 'Keys only';
+      case 'all-fields': return 'All fields';
+    }
+  };
+
+  const getDetailLevelIcon = () => {
+    switch (detailLevel) {
+      case 'table-names': return <IconTableNames />;
+      case 'keys-only': return <IconKeysOnly />;
+      case 'all-fields': return <IconAllFields />;
+    }
+  };
+
   return (
     <Panel position="top-right" className="canvas-toolbar">
       <div className="toolbar-group">
-        <div className="layout-menu-container" ref={menuRef}>
+        {/* Detail Level Menu */}
+        <div className="layout-menu-container" ref={detailMenuRef}>
           <button 
-            className={`toolbar-btn ${menuOpen ? 'toolbar-btn--active' : ''}`}
-            onClick={() => setMenuOpen(!menuOpen)}
+            className={`toolbar-btn ${detailMenuOpen ? 'toolbar-btn--active' : ''}`}
+            onClick={() => setDetailMenuOpen(!detailMenuOpen)}
+            title="Diagram Detail Level"
+          >
+            <span>Detail level:</span>
+            <div className="flex items-center gap-1.5 ml-1 text-blue-400 font-medium">
+                {getDetailLevelIcon()}
+                <IconChevronUp />
+            </div>
+          </button>
+
+          {detailMenuOpen && (
+            <div className="layout-menu detail-menu">
+              <h3 className="layout-menu__title border-b border-white/10 pb-2 mb-2">Detail level</h3>
+              
+              <div 
+                className={`layout-option ${detailLevel === 'table-names' ? 'layout-option--active' : ''}`} 
+                onClick={() => onSelectDetailLevel('table-names')}
+              >
+                <div className="layout-option__icon"><IconTableNames /></div>
+                <div className="layout-option__content">
+                  <div className="layout-option__name">Table names</div>
+                </div>
+                {detailLevel === 'table-names' && <div className="text-blue-400"><IconCheck /></div>}
+              </div>
+
+              <div 
+                className={`layout-option ${detailLevel === 'keys-only' ? 'layout-option--active' : ''}`} 
+                onClick={() => onSelectDetailLevel('keys-only')}
+              >
+                <div className="layout-option__icon"><IconKeysOnly /></div>
+                <div className="layout-option__content">
+                  <div className="layout-option__name">Keys only</div>
+                </div>
+                {detailLevel === 'keys-only' && <div className="text-blue-400"><IconCheck /></div>}
+              </div>
+
+              <div 
+                className={`layout-option ${detailLevel === 'all-fields' ? 'layout-option--active' : ''}`} 
+                onClick={() => onSelectDetailLevel('all-fields')}
+              >
+                <div className="layout-option__icon"><IconAllFields /></div>
+                <div className="layout-option__content">
+                  <div className="layout-option__name">All fields</div>
+                </div>
+                {detailLevel === 'all-fields' && <div className="text-blue-400"><IconCheck /></div>}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="toolbar-divider" />
+
+        <div className="layout-menu-container" ref={arrangeMenuRef}>
+          <button 
+            className={`toolbar-btn ${arrangeMenuOpen ? 'toolbar-btn--active' : ''}`}
+            onClick={() => setArrangeMenuOpen(!arrangeMenuOpen)}
             title="Auto Arrange Algorithms"
           >
             <IconArrange />
             <span>Auto Arrange</span>
           </button>
 
-          {menuOpen && (
+          {arrangeMenuOpen && (
             <div className="layout-menu">
               <h3 className="layout-menu__title">Choose auto arrange algorithm</h3>
               

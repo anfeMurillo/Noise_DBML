@@ -1,9 +1,6 @@
-// ============================================================
-// TableNode — Custom React Flow Node for Database Tables
-// ============================================================
-
 import React, { memo } from 'react';
 import { Handle, Position, useEdges, type NodeProps } from '@xyflow/react';
+import { useDiagramStore } from '../store/useStore';
 
 interface ColumnData {
   name: string;
@@ -43,6 +40,8 @@ interface TableNodeData {
 
 function TableNode({ id, data }: NodeProps) {
   const { name, schema, alias, columns, indexes, note, headerColor } = data as unknown as TableNodeData;
+  const detailLevel = useDiagramStore((s) => s.detailLevel);
+  
   const displayName = alias ? `${name} (${alias})` : name;
   const fullName = schema ? `${schema}.${displayName}` : displayName;
 
@@ -57,10 +56,22 @@ function TableNode({ id, data }: NodeProps) {
     return connected;
   }, [edges, id]);
 
-  const hasIndexes = indexes && indexes.length > 0;
+  const showAllFields = detailLevel === 'all-fields';
+  const showKeysOnly = detailLevel === 'keys-only';
+  const showTableNames = detailLevel === 'table-names';
+
+  const filteredColumns = React.useMemo(() => {
+    if (showTableNames) return [];
+    if (showKeysOnly) {
+      return columns.filter((col) => col.settings.primaryKey || col.settings.ref);
+    }
+    return columns;
+  }, [columns, showTableNames, showKeysOnly]);
+
+  const hasIndexes = showAllFields && indexes && indexes.length > 0;
 
   return (
-    <div className="table-node">
+    <div className={`table-node ${showTableNames ? 'table-node--names-only' : ''}`}>
       {/* Header */}
       <div
         className="table-node__header"
@@ -73,125 +84,127 @@ function TableNode({ id, data }: NodeProps) {
       </div>
 
       {/* Columns */}
-      <div className="table-node__columns">
-        {columns && columns.length > 0 ? (
-          columns.map((col, idx) => {
-            const hasSpecialInfo = col.isEnum || col.settings.default || col.settings.note;
-            
-            return (
-              <div key={idx} className="table-node__column group/column">
-                {/* Row-level handles on left side */}
-                <Handle
-                  type="target"
-                  position={Position.Left}
-                  id={`${col.name}-left-target`}
-                  className={connectedHandleIds.has(`${col.name}-left-target`) ? 'handle-connected' : undefined}
-                  style={{ left: -4, top: '50%' }}
-                />
-                <Handle
-                  type="source"
-                  position={Position.Left}
-                  id={`${col.name}-left-source`}
-                  className={connectedHandleIds.has(`${col.name}-left-source`) ? 'handle-connected' : undefined}
-                  style={{ left: -4, top: '50%', visibility: connectedHandleIds.has(`${col.name}-left-source`) ? 'visible' : 'hidden' }}
-                />
+      {!showTableNames && (
+        <div className="table-node__columns">
+          {filteredColumns && filteredColumns.length > 0 ? (
+            filteredColumns.map((col, idx) => {
+              const hasSpecialInfo = col.isEnum || col.settings.default || col.settings.note;
+              
+              return (
+                <div key={idx} className="table-node__column group/column">
+                  {/* Row-level handles on left side */}
+                  <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={`${col.name}-left-target`}
+                    className={connectedHandleIds.has(`${col.name}-left-target`) ? 'handle-connected' : undefined}
+                    style={{ left: -4, top: '50%' }}
+                  />
+                  <Handle
+                    type="source"
+                    position={Position.Left}
+                    id={`${col.name}-left-source`}
+                    className={connectedHandleIds.has(`${col.name}-left-source`) ? 'handle-connected' : undefined}
+                    style={{ left: -4, top: '50%', visibility: connectedHandleIds.has(`${col.name}-left-source`) ? 'visible' : 'hidden' }}
+                  />
 
-                {/* Icon */}
-                <span className="table-node__col-icon">
-                  {col.settings.primaryKey ? '🔑' : col.settings.ref ? '🔗' : '○'}
-                </span>
+                  {/* Icon */}
+                  <span className="table-node__col-icon">
+                    {col.settings.primaryKey ? '🔑' : col.settings.ref ? '🔗' : '○'}
+                  </span>
 
-                {/* Name & Note Icon */}
-                <div className="flex items-center gap-1 flex-1 overflow-hidden">
-                  <span className="table-node__col-name">{col.name}</span>
-                  {col.settings.note && (
-                    <span className="text-[10px] opacity-40">📄</span>
-                  )}
-                </div>
-
-                {/* Type */}
-                <span className="table-node__col-type">{col.type}</span>
-
-                {/* Badges */}
-                <div className="table-node__col-badges">
-                  {col.isEnum && (
-                    <span className="table-node__badge bg-purple-500/20 text-purple-400 border border-purple-500/30">E</span>
-                  )}
-                  {col.settings.primaryKey && (
-                    <span className="table-node__badge badge--pk">PK</span>
-                  )}
-                  {col.settings.ref && (
-                    <span className="table-node__badge badge--fk">FK</span>
-                  )}
-                  {col.settings.unique && !col.settings.primaryKey && (
-                    <span className="table-node__badge badge--unique">UQ</span>
-                  )}
-                  {col.settings.notNull && !col.settings.primaryKey && (
-                    <span className="table-node__badge badge--nn">NN</span>
-                  )}
-                </div>
-
-                {/* Field Tooltip / Popover */}
-                {hasSpecialInfo && (
-                  <div className="field-info-popover">
-                    <div className="field-info-popover__header">
-                      <span className="font-bold">{col.name}</span>
-                      <span className="text-green-400 ml-2">{col.type}</span>
-                    </div>
-                    
-                    <div className="field-info-popover__content">
-                      {col.isEnum && col.enumData && (
-                        <div className="mb-2">
-                          <div className="text-red-400 font-bold mb-1 uppercase text-[9px]">Enum {col.enumData.schema ? `${col.enumData.schema}.${col.enumData.name}` : col.enumData.name}:</div>
-                          <div className="pl-2 space-y-0.5 border-l border-white/10 ml-1">
-                            {col.enumData.values.map(v => (
-                              <div key={v.name} className="text-blue-400">{v.name}</div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {col.settings.default && (
-                        <div className="mt-2 flex gap-1 items-center">
-                          <span className="text-red-400 font-bold uppercase text-[9px]">Default:</span>
-                          <span className="text-white/80">{col.settings.default}</span>
-                        </div>
-                      )}
-
-                      {col.settings.note && (
-                        <div className="mt-2 pt-2 border-t border-white/10 text-white/70 italic text-[11px] leading-relaxed">
-                          {col.settings.note}
-                        </div>
-                      )}
-                    </div>
+                  {/* Name & Note Icon */}
+                  <div className="flex items-center gap-1 flex-1 overflow-hidden">
+                    <span className="table-node__col-name">{col.name}</span>
+                    {col.settings.note && (
+                      <span className="text-[10px] opacity-40">📄</span>
+                    )}
                   </div>
-                )}
 
-                {/* Row-level handles on right side */}
-                <Handle
-                  type="source"
-                  position={Position.Right}
-                  id={`${col.name}-right-source`}
-                  className={connectedHandleIds.has(`${col.name}-right-source`) ? 'handle-connected' : undefined}
-                  style={{ right: -4, top: '50%' }}
-                />
-                <Handle
-                  type="target"
-                  position={Position.Right}
-                  id={`${col.name}-right-target`}
-                  className={connectedHandleIds.has(`${col.name}-right-target`) ? 'handle-connected' : undefined}
-                  style={{ right: -4, top: '50%', visibility: connectedHandleIds.has(`${col.name}-right-target`) ? 'visible' : 'hidden' }}
-                />
-              </div>
-            );
-          })
-        ) : (
-          <div className="table-node__column" style={{ opacity: 0.4 }}>
-            <span className="table-node__col-icon">○</span>
-            <span className="table-node__col-name">No columns</span>
-          </div>
-        )}
-      </div>
+                  {/* Type */}
+                  <span className="table-node__col-type">{col.type}</span>
+
+                  {/* Badges */}
+                  <div className="table-node__col-badges">
+                    {col.isEnum && (
+                      <span className="table-node__badge bg-purple-500/20 text-purple-400 border border-purple-500/30">E</span>
+                    )}
+                    {col.settings.primaryKey && (
+                      <span className="table-node__badge badge--pk">PK</span>
+                    )}
+                    {col.settings.ref && (
+                      <span className="table-node__badge badge--fk">FK</span>
+                    )}
+                    {col.settings.unique && !col.settings.primaryKey && (
+                      <span className="table-node__badge badge--unique">UQ</span>
+                    )}
+                    {col.settings.notNull && !col.settings.primaryKey && (
+                      <span className="table-node__badge badge--nn">NN</span>
+                    )}
+                  </div>
+
+                  {/* Field Tooltip / Popover */}
+                  {hasSpecialInfo && (
+                    <div className="field-info-popover">
+                      <div className="field-info-popover__header">
+                        <span className="font-bold">{col.name}</span>
+                        <span className="text-green-400 ml-2">{col.type}</span>
+                      </div>
+                      
+                      <div className="field-info-popover__content">
+                        {col.isEnum && col.enumData && (
+                          <div className="mb-2">
+                            <div className="text-red-400 font-bold mb-1 uppercase text-[9px]">Enum {col.enumData.schema ? `${col.enumData.schema}.${col.enumData.name}` : col.enumData.name}:</div>
+                            <div className="pl-2 space-y-0.5 border-l border-white/10 ml-1">
+                              {col.enumData.values.map(v => (
+                                <div key={v.name} className="text-blue-400">{v.name}</div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {col.settings.default && (
+                          <div className="mt-2 flex gap-1 items-center">
+                            <span className="text-red-400 font-bold uppercase text-[9px]">Default:</span>
+                            <span className="text-white/80">{col.settings.default}</span>
+                          </div>
+                        )}
+
+                        {col.settings.note && (
+                          <div className="mt-2 pt-2 border-t border-white/10 text-white/70 italic text-[11px] leading-relaxed">
+                            {col.settings.note}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Row-level handles on right side */}
+                  <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={`${col.name}-right-source`}
+                    className={connectedHandleIds.has(`${col.name}-right-source`) ? 'handle-connected' : undefined}
+                    style={{ right: -4, top: '50%' }}
+                  />
+                  <Handle
+                    type="target"
+                    position={Position.Right}
+                    id={`${col.name}-right-target`}
+                    className={connectedHandleIds.has(`${col.name}-right-target`) ? 'handle-connected' : undefined}
+                    style={{ right: -4, top: '50%', visibility: connectedHandleIds.has(`${col.name}-right-target`) ? 'visible' : 'hidden' }}
+                  />
+                </div>
+              );
+            })
+          ) : (
+            <div className="table-node__column" style={{ opacity: 0.4 }}>
+              <span className="table-node__col-icon">○</span>
+              <span className="table-node__col-name">No columns shown</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Indexes */}
       {hasIndexes && (
@@ -219,11 +232,48 @@ function TableNode({ id, data }: NodeProps) {
       )}
 
       {/* Table Note at bottom - strictly for table note */}
-      {note && (
+      {showAllFields && note && (
         <div className="table-node__footer-note">
           <span className="table-node__footer-note-icon">📄</span> {note}
         </div>
       )}
+
+      {/* Hidden but connected handles fallback to keep lines rendering */}
+      {columns.map((col) => {
+        const isVisible = filteredColumns.some(fc => fc.name === col.name);
+        if (isVisible) return null;
+        
+        const possibleHandleIds = [
+          `${col.name}-left-target`,
+          `${col.name}-left-source`,
+          `${col.name}-right-source`,
+          `${col.name}-right-target`
+        ];
+        
+        return possibleHandleIds.map(hid => {
+          if (!connectedHandleIds.has(hid)) return null;
+          
+          const isLeft = hid.includes('-left-');
+          const type = hid.includes('-target') ? 'target' : 'source';
+          const position = isLeft ? Position.Left : Position.Right;
+          
+          return (
+            <Handle
+              key={hid}
+              type={type}
+              position={position}
+              id={hid}
+              className="handle-connected"
+              style={{ 
+                [isLeft ? 'left' : 'right']: -4, 
+                top: '50%',
+                visibility: 'visible',
+                opacity: 1
+              }}
+            />
+          );
+        });
+      })}
     </div>
   );
 }
