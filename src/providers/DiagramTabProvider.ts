@@ -48,9 +48,12 @@ export class DiagramTabProvider {
     panel.webview.html = this._getHtml(panel.webview);
 
     // Handle messages from the webview
-    panel.webview.onDidReceiveMessage((message) => {
+    panel.webview.onDidReceiveMessage(async (message) => {
       if (message.type === 'ready') {
         this._sendContent(panel, filePath);
+      }
+      if (message.type === 'saveImage' && message.dataUrl) {
+        await this._saveImage(message.dataUrl);
       }
       if (message.type === 'error') {
         vscode.window.showErrorMessage(
@@ -104,18 +107,54 @@ export class DiagramTabProvider {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta
+    <meta
     http-equiv="Content-Security-Policy"
-    content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};"
+    content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}' 'unsafe-eval'; font-src ${webview.cspSource}; img-src data: blob: ${webview.cspSource}; connect-src ${webview.cspSource} data: blob:;"
   />
   <link rel="stylesheet" href="${styleUri}" />
   <title>DBML Diagram</title>
 </head>
 <body>
   <div id="root"></div>
+  <script nonce="${nonce}">
+    window.addEventListener('error', (event) => {
+      const vscode = acquireVsCodeApi();
+      vscode.postMessage({
+        type: 'error',
+        text: 'Runtime error: ' + event.message + ' at ' + event.filename + ':' + event.lineno
+      });
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      const vscode = acquireVsCodeApi();
+      vscode.postMessage({
+        type: 'error',
+        text: 'Unhandled promise rejection: ' + event.reason
+      });
+    });
+  </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
+  }
+
+  private async _saveImage(dataUrl: string): Promise<void> {
+    const saveUri = await vscode.window.showSaveDialog({
+      filters: {
+        Images: ['png'],
+      },
+      defaultUri: vscode.Uri.file(`diagram-${new Date().toISOString().split('T')[0]}.png`),
+    });
+
+    if (saveUri) {
+      try {
+        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        fs.writeFileSync(saveUri.fsPath, buffer);
+        vscode.window.showInformationMessage(`Diagram saved to ${path.basename(saveUri.fsPath)}`);
+      } catch (err) {
+        vscode.window.showErrorMessage(`Failed to save diagram: ${err}`);
+      }
+    }
   }
 }
 

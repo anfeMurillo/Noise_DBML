@@ -3,6 +3,8 @@
 // ============================================================
 
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { parseDbml } from '../parser/visitor';
 import { DbmlSchema } from '../parser/types';
 
@@ -31,7 +33,7 @@ export class DiagramPanelProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
     // Handle messages from the webview
-    webviewView.webview.onDidReceiveMessage((message) => {
+    webviewView.webview.onDidReceiveMessage(async (message) => {
       switch (message.type) {
         case 'ready':
           // Webview is ready, send the last parsed content
@@ -43,6 +45,11 @@ export class DiagramPanelProvider implements vscode.WebviewViewProvider {
             if (editor && editor.document.languageId === 'dbml') {
               this.updateContent(editor.document.getText());
             }
+          }
+          break;
+        case 'saveImage':
+          if (message.dataUrl) {
+            await this._saveImage(message.dataUrl);
           }
           break;
         case 'error':
@@ -86,9 +93,9 @@ export class DiagramPanelProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta
+    <meta
     http-equiv="Content-Security-Policy"
-    content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};"
+    content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource}; img-src data: blob: ${webview.cspSource}; connect-src ${webview.cspSource} data:;"
   />
   <link rel="stylesheet" href="${styleUri}" />
   <title>DBML Diagram</title>
@@ -98,6 +105,26 @@ export class DiagramPanelProvider implements vscode.WebviewViewProvider {
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
+  }
+
+  private async _saveImage(dataUrl: string): Promise<void> {
+    const saveUri = await vscode.window.showSaveDialog({
+      filters: {
+        Images: ['png'],
+      },
+      defaultUri: vscode.Uri.file(`diagram-${new Date().toISOString().split('T')[0]}.png`),
+    });
+
+    if (saveUri) {
+      try {
+        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        fs.writeFileSync(saveUri.fsPath, buffer);
+        vscode.window.showInformationMessage(`Diagram saved to ${path.basename(saveUri.fsPath)}`);
+      } catch (err) {
+        vscode.window.showErrorMessage(`Failed to save diagram: ${err}`);
+      }
+    }
   }
 }
 

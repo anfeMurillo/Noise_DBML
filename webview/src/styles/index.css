@@ -400,14 +400,47 @@ html, body, #root {
   fill: var(--node-fg) !important;
 }
 
-/* ---- Handle Styles ---- */
-.react-flow__handle {
-  width: 8px !important;
-  height: 8px !important;
-  border: 2px solid var(--edge-color) !important;
-  background: var(--node-bg) !important;
+/* ---- Custom Toolbar ---- */
+.canvas-toolbar {
+  margin-top: 12px;
+  margin-right: 12px;
 }
 
-.react-flow__handle:hover {
-  background: var(--edge-color) !important;
+.toolbar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  background: var(--node-bg);
+  border: 1px solid var(--node-border);
+  color: var(--node-fg);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.toolbar-btn:hover {
+  background: var(--node-hover);
+  border-color: var(--edge-color);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.toolbar-btn:active {
+  transform: translateY(0);
+}
+
+.toolbar-btn span {
+  opacity: 0.9;
 }

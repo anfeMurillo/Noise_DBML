@@ -213,6 +213,7 @@ interface DiagramState {
   onEdgesChange: OnEdgesChange;
   setSchema: (schema: DbmlSchema) => void;
   toggleGroupCollapse: (groupId: string) => void;
+  adjustLayout: () => void;
 }
 
 export const useDiagramStore = create<DiagramState>((set, get) => ({
@@ -221,6 +222,34 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   schema: null,
   groupMembership: {},
   collapsedGroups: {},
+
+  // ──────────────────────────────────────────────
+  // Manual Layout Trigger
+  // ──────────────────────────────────────────────
+  adjustLayout: () => {
+    const { nodes, edges, groupMembership, schema } = get();
+    if (!nodes.length) return;
+
+    // 1. Separate groups from basic nodes
+    const basicNodes = nodes.filter(n => n.type !== 'groupNode');
+    
+    // 2. Apply Dagre to basic nodes
+    const layoutedBasicNodes = applyDagreLayout(basicNodes, edges);
+    
+    // 3. Re-calculate group bounds based on new positions
+    let newNodes = [...layoutedBasicNodes];
+    const groupIds = nodes.filter(n => n.type === 'groupNode').map(n => n.id);
+    
+    // Add groups back (they'll be recalced)
+    const existingGroups = nodes.filter(n => n.type === 'groupNode');
+    newNodes = [...existingGroups, ...newNodes];
+
+    for (const gId of groupIds) {
+      newNodes = recalcGroupBounds(newNodes, gId, groupMembership);
+    }
+
+    set({ nodes: newNodes });
+  },
 
   // ──────────────────────────────────────────────
   // Node-change handler with group propagation

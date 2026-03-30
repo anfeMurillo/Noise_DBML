@@ -44,25 +44,6 @@
         "path": "./snippets/dbml.code-snippets"
       }
     ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "noise-dbml-sidebar",
-          "title": "DBML Files",
-          "icon": "$(database)"
-        }
-      ]
-    },
-    "views": {
-      "noise-dbml-sidebar": [
-        {
-          "id": "noiseDbml.fileExplorer",
-          "name": "DBML Files",
-          "contextualTitle": "DBML Files",
-          "icon": "$(database)"
-        }
-      ]
-    },
     "commands": [
       {
         "command": "noiseDbml.seeDiagram",
@@ -70,24 +51,24 @@
         "icon": "$(open-preview)"
       },
       {
-        "command": "noiseDbml.refreshFileList",
-        "title": "DBML: Refresh File List",
-        "icon": "$(refresh)"
+        "command": "noiseDbml.chooseAlgorithm",
+        "title": "Choose auto arrange algorithm",
+        "icon": "$(graph-left)"
       }
     ],
     "menus": {
-      "view/item/context": [
+      "editor/title": [
         {
           "command": "noiseDbml.seeDiagram",
-          "when": "view == noiseDbml.fileExplorer && viewItem == dbmlFile",
-          "group": "inline"
+          "when": "resourceLangId == dbml",
+          "group": "navigation@1"
         }
       ],
-      "view/title": [
+      "explorer/context": [
         {
-          "command": "noiseDbml.refreshFileList",
-          "when": "view == noiseDbml.fileExplorer",
-          "group": "navigation"
+          "command": "noiseDbml.seeDiagram",
+          "when": "resourceLangId == dbml",
+          "group": "navigation@1"
         }
       ]
     }

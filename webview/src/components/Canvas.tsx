@@ -15,6 +15,7 @@ import TableNode from './TableNode';
 import EnumNode from './EnumNode';
 import TableGroupNode from './TableGroupNode';
 import DbmlEdge from './DbmlEdge';
+import Toolbar from './Toolbar';
 
 const nodeTypes = {
   tableNode: TableNode,
@@ -65,6 +66,7 @@ export default function Canvas() {
         size={1}
         color="var(--node-border)"
       />
+      <Toolbar />
       <Controls
         showInteractive={false}
         style={{ bottom: 12, left: 12 }}

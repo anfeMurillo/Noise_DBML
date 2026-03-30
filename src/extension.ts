@@ -3,47 +3,45 @@
 // ============================================================
 
 import * as vscode from 'vscode';
-import { DbmlFileProvider, DbmlFileItem } from './providers/DbmlFileProvider';
 import { DiagramTabProvider } from './providers/DiagramTabProvider';
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Noise DBML extension activated');
 
-  // ── 1. Register the DBML file tree view in the sidebar ──────────────
-  const fileProvider = new DbmlFileProvider();
-
-  const treeView = vscode.window.createTreeView(
-    DbmlFileProvider.viewType,
-    {
-      treeDataProvider: fileProvider,
-      showCollapseAll: false,
-    },
-  );
-
-  context.subscriptions.push(treeView, fileProvider);
-
-  // ── 2. Diagram tab provider ──────────────────────────────────────────
+  // ── 1. Diagram tab provider ──────────────────────────────────────────
   const diagramTabProvider = new DiagramTabProvider(context.extensionUri);
 
-  // ── 3. Commands ──────────────────────────────────────────────────────
+  // ── 2. Commands ──────────────────────────────────────────────────────
 
-  // Command triggered from the tree-item inline / context menu
+  // Command triggered from the explorer context menu or editor title
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'noiseDbml.seeDiagram',
-      (item: DbmlFileItem) => {
-        if (item?.resourceUri) {
-          diagramTabProvider.openForFile(item.resourceUri);
+      (arg?: any | vscode.Uri) => {
+        let uri: vscode.Uri | undefined;
+        
+        if (arg instanceof vscode.Uri) {
+          uri = arg;
+        } else {
+          // If no argument, try the active editor
+          uri = vscode.window.activeTextEditor?.document.uri;
+        }
+
+        if (uri && uri.fsPath.endsWith('.dbml')) {
+          diagramTabProvider.openForFile(uri);
         }
       },
     ),
   );
 
-  // Refresh the file list
+  // Command to choose auto arrange algorithm (placeholder)
   context.subscriptions.push(
-    vscode.commands.registerCommand('noiseDbml.refreshFileList', () => {
-      fileProvider.refresh();
-    }),
+    vscode.commands.registerCommand(
+      'noiseDbml.chooseAlgorithm',
+      () => {
+        vscode.window.showInformationMessage('Choose Auto Arrange Algorithm feature is coming soon!');
+      },
+    ),
   );
 }
 
