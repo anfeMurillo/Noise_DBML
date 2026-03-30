@@ -410,12 +410,32 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   // Schema → Nodes + Edges
   // ──────────────────────────────────────────────
   setSchema: (schema: DbmlSchema) => {
+    if (!schema || !schema.tables) {
+       set({ nodes: [], edges: [], schema: null, groupMembership: {}, collapsedGroups: {} });
+       return;
+    }
     const nodes: Node[] = [];
     const edges: Edge[] = [];
 
     // -- Table Nodes --
     for (const table of schema.tables) {
       const fullName = table.schema ? `${table.schema}.${table.name}` : table.name;
+      
+      // Enrich columns with enum info
+      const enrichedColumns = table.columns.map(col => {
+        // Try to find a matching enum
+        const matchingEnum = schema.enums.find(e => {
+          const enumFullName = e.schema ? `${e.schema}.${e.name}` : e.name;
+          return col.type === enumFullName || col.type === e.name;
+        });
+
+        return {
+          ...col,
+          isEnum: !!matchingEnum,
+          enumData: matchingEnum
+        };
+      });
+
       nodes.push({
         id: `table-${fullName}`,
         type: 'tableNode',
@@ -425,7 +445,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
           name: table.name,
           schema: table.schema,
           alias: table.alias,
-          columns: table.columns,
+          columns: enrichedColumns,
           note: table.note,
           headerColor: table.settings?.headerColor,
         },

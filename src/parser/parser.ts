@@ -92,7 +92,7 @@ export class DbmlParser extends CstParser {
   private columnDef = this.RULE('columnDef', () => {
     this.SUBRULE(this.columnName, { LABEL: 'colName' });
     this.SUBRULE(this.columnType, { LABEL: 'colType' });
-    this.OPTION(() => {
+    this.MANY(() => {
       this.SUBRULE(this.settingsBlock, { LABEL: 'colSettings' });
     });
   });

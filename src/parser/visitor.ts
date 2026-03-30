@@ -91,7 +91,10 @@ class DbmlAstVisitor extends BaseCstVisitor {
     }
 
     if (ctx.tableSettings) {
-      table.settings = this.extractTableSettings(ctx.tableSettings[0]);
+      ctx.tableSettings.forEach((sNode: CstNode) => {
+        const s = this.extractTableSettings(sNode);
+        Object.assign(table.settings, s);
+      });
     }
 
     if (ctx.columnDef) {
@@ -125,8 +128,10 @@ class DbmlAstVisitor extends BaseCstVisitor {
     };
 
     if (ctx.colSettings) {
-      const s = this.extractColumnSettings(ctx.colSettings[0]);
-      Object.assign(settings, s);
+      ctx.colSettings.forEach((sNode: CstNode) => {
+        const s = this.extractColumnSettings(sNode);
+        Object.assign(settings, s);
+      });
     }
 
     return {
@@ -590,9 +595,14 @@ export function parseDbml(text: string): DbmlSchema | null {
   }
 
   try {
-    return visitor.visit(cst);
+    const ast = visitor.visit(cst);
+    return ast;
   } catch (e) {
     console.error('DBML AST Visitor error:', e);
-    return null;
+    // Return empty schema instead of null to avoid webview crash
+    return {
+      tables: [], enums: [], refs: [],
+      tableGroups: [], tablePartials: [], stickyNotes: []
+    };
   }
 }

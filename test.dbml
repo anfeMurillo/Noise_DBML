@@ -11,6 +11,8 @@ Project Ecommerce_Enterprise {
   '''
 }
 
+
+
 // ==========================================
 // 1. ESQUEMA DE SEGURIDAD (AUTH)
 // ==========================================
@@ -27,8 +29,8 @@ Table auth.users as U [headercolor: #2b3a42] {
 
 Table auth.permissions [headercolor: #2b3a42] {
   id integer [primary key]
-  name varchar [unique]
-  description text
+  name varchar [unique, note: 'algo' ]
+  description text [note: 'algo mas']
 }
 
 // Relación Muchos-a-Muchos nativa (genera visualmente la conexión directa)

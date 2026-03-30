@@ -3,7 +3,7 @@
 // ============================================================
 
 import React, { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useEdges, type NodeProps } from '@xyflow/react';
 
 interface EnumNodeData {
   name: string;
@@ -12,12 +12,23 @@ interface EnumNodeData {
   [key: string]: unknown;
 }
 
-function EnumNode({ data }: NodeProps) {
+function EnumNode({ id, data }: NodeProps) {
   const { name, schema, values } = data as unknown as EnumNodeData;
   const fullName = schema ? `${schema}.${name}` : name;
 
+  // Track connected handles for conditional visibility
+  const edges = useEdges();
+  const connectedHandleIds = React.useMemo(() => {
+    const connected = new Set<string>();
+    for (const edge of edges) {
+      if (edge.source === id) connected.add('source');
+      if (edge.target === id) connected.add('target');
+    }
+    return connected;
+  }, [edges, id]);
+
   return (
-    <div className="enum-node">
+    <div className="enum-node group/enum">
       {/* Header */}
       <div className="enum-node__header">
         <span style={{ fontSize: 14, opacity: 0.85 }}>◆</span>
@@ -47,8 +58,16 @@ function EnumNode({ data }: NodeProps) {
       </div>
 
       {/* Handles */}
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className={connectedHandleIds.has('target') ? 'handle-connected' : undefined}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className={connectedHandleIds.has('source') ? 'handle-connected' : undefined}
+      />
     </div>
   );
 }
