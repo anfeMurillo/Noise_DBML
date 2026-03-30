@@ -343,23 +343,39 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         ? `table-${ref.to.schema}.${ref.to.table}`
         : `table-${ref.to.table}`;
 
+      const isSelf = fromTable === toTable;
+      const fromCol = ref.from.columns[0];
+      const toCol = ref.to.columns[0];
+
       edges.push({
         id: `edge-${i}`,
         source: fromTable,
         target: toTable,
+        sourceHandle: isSelf ? `${fromCol}-right-source` : `${fromCol}-right-source`,
+        targetHandle: isSelf ? `${toCol}-right-target` : `${toCol}-left-target`,
         label: getEdgeLabel(ref.type),
-        type: 'smoothstep',
+        type: 'dbmlEdge',
         animated: false,
         zIndex: 20,
+        data: {
+          isSelf,
+          color: ref.settings?.color || 'var(--edge-color)',
+        },
         style: {
           stroke: ref.settings?.color || 'var(--edge-color)',
-          strokeWidth: 1.5,
+          strokeWidth: 2,
         },
         ...getEdgeMarkers(ref.type),
       });
     }
 
     // -- Inline Ref Edges --
+    const seenRefs = new Set<string>();
+    // Pre-populate seenRefs from explicit refs to avoid duplicates
+    for (const edge of edges) {
+      seenRefs.add(`${edge.source}->${edge.target}`);
+    }
+
     let inlineIdx = schema.refs.length;
     for (const table of schema.tables) {
       const fullTableName = table.schema ? `${table.schema}.${table.name}` : table.name;
@@ -369,15 +385,31 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
             ? `table-${col.settings.ref.schema}.${col.settings.ref.table}`
             : `table-${col.settings.ref.table}`;
 
+          const source = `table-${fullTableName}`;
+          const isSelf = source === target;
+          
+          const refId = `${source}->${target}`;
+          if (seenRefs.has(refId)) continue;
+          seenRefs.add(refId);
+
+          const fromCol = col.name;
+          const toCol = col.settings.ref.column;
+
           edges.push({
             id: `edge-inline-${inlineIdx++}`,
-            source: `table-${fullTableName}`,
+            source,
             target,
+            sourceHandle: isSelf ? `${fromCol}-right-source` : `${fromCol}-right-source`,
+            targetHandle: isSelf ? `${toCol}-right-target` : `${toCol}-left-target`,
             label: getEdgeLabel(col.settings.ref.type),
-            type: 'smoothstep',
+            type: 'dbmlEdge',
             animated: false,
             zIndex: 20,
-            style: { strokeWidth: 1.5 },
+            data: {
+              isSelf,
+              color: 'var(--edge-color)',
+            },
+            style: { strokeWidth: 2 },
             ...getEdgeMarkers(col.settings.ref.type),
           });
         }

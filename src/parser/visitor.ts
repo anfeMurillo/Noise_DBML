@@ -216,12 +216,15 @@ class DbmlAstVisitor extends BaseCstVisitor {
   refSetting(ctx: any): any {
     const op = this.visit(ctx.relOp[0]);
     const target = this.visit(ctx.refTarget[0]);
+    // For inline refs [ref: > table.column], 
+    // qualifiedName returns { schema: 'table', name: 'column' } if there's a dot.
+    // However, DBML also allows [ref: > table] where it infers the PK.
     return {
       ref: {
         type: op as RelationType,
-        table: target.name,
-        column: '',  // Will resolve from qualified name
-        schema: target.schema,
+        table: target.schema || target.name,
+        column: target.schema ? target.name : '', 
+        schema: undefined, // We don't support schema.table.col in inline refs yet or it's part of schema part
       },
     };
   }

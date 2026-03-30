@@ -14,11 +14,16 @@ import { useDiagramStore } from '../store/useStore';
 import TableNode from './TableNode';
 import EnumNode from './EnumNode';
 import TableGroupNode from './TableGroupNode';
+import DbmlEdge from './DbmlEdge';
 
 const nodeTypes = {
   tableNode: TableNode,
   enumNode: EnumNode,
   groupNode: TableGroupNode,
+};
+
+const edgeTypes = {
+  dbmlEdge: DbmlEdge,
 };
 
 export default function Canvas() {
@@ -43,13 +48,14 @@ export default function Canvas() {
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       fitView
       fitViewOptions={{ padding: 0.2 }}
       minZoom={0.1}
       maxZoom={2}
       proOptions={{ hideAttribution: true }}
       defaultEdgeOptions={{
-        type: 'smoothstep',
+        type: 'dbmlEdge',
         animated: false,
       }}
     >

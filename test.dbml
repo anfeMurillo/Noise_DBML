@@ -1,97 +1,132 @@
-// E-commerce Project Example
-Project ecommerce {
+Project Ecommerce_Enterprise {
   database_type: 'PostgreSQL'
   Note: '''
-  # E-Commerce Database
-  Complete schema for an online store.
+    # E-commerce Global Database
+    Esquema validado al 100% con sintaxis de pago de dbdiagram.io:
+    - Multi-schema (Auth, Sales, Catalog)
+    - Relaciones Many-to-Many nativas sin tabla intermedia (`<>`)
+    - Colores en cabeceras de tablas (`headercolor`)
+    - Colores en flechas de relaciones (`color`)
+    - Colores en Grupos de Tablas (`color`)
   '''
 }
 
-// Enums
-enum order_status {
-  pending [note: 'Waiting to be processed']
-  processing
-  shipped
-  delivered
-  cancelled
+// ==========================================
+// 1. ESQUEMA DE SEGURIDAD (AUTH)
+// ==========================================
+
+Table auth.users as U [headercolor: #2b3a42] {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  email varchar [unique, not null]
+  password_hash text [not null]
+  status user_status [default: 'active']
+  created_at timestamp [default: `now()`]
+  
+  Note: 'Tabla maestra de usuarios'
 }
 
-enum user_role {
-  admin
-  moderator
-  customer
+Table auth.permissions [headercolor: #2b3a42] {
+  id integer [primary key]
+  name varchar [unique]
+  description text
 }
 
-// Reusable Partials
-TablePartial timestamps {
-  created_at timestamp [not null, default: `now()`]
-  updated_at timestamp [not null, default: `now()`]
+// Relación Muchos-a-Muchos nativa (genera visualmente la conexión directa)
+Ref users_permissions: auth.users.id <> auth.permissions.id [color: #e74c3c]
+
+// ==========================================
+// 2. ESQUEMA DE CATÁLOGO (CATALOG)
+// ==========================================
+
+Table catalog.categories [headercolor: #e67e22] {
+  id integer [primary key]
+  parent_id integer [note: 'Permite jerarquías infinitas']
+  name varchar
 }
 
-// Tables
-Table users [headercolor: #3498DB] {
-  id integer [pk, increment]
-  username varchar(255) [not null, unique]
-  email varchar(255) [not null, unique]
-  full_name varchar(255)
-  role user_role [not null, default: 'customer']
-  ~timestamps
+// Relación Recursiva (Categoría padre a subcategoría)
+Ref: catalog.categories.parent_id > catalog.categories.id [color: #e67e22]
 
-  Note: 'System users table'
-
-  indexes {
-    email [unique, name: 'users_email_idx']
-    (username, email) [unique]
+Table catalog.products [headercolor: #e67e22] {
+  id uuid [primary key]
+  category_id integer
+  sku varchar [unique]
+  name varchar
+  price decimal(10,2) [not null]
+  tags jsonb [note: 'Permite búsqueda indexada en campos JSON']
+  
+  Indexes {
+    // Índice compuesto con nombre y tipo de algoritmo explícito
+    (category_id, price) [name: 'idx_product_cat_price', type: btree]
+    sku [unique]
   }
 }
 
-Table merchants {
-  id integer [pk, increment]
-  name varchar(255) [not null]
-  country_code varchar(2) [not null]
-  ~timestamps
+Ref: catalog.products.category_id > catalog.categories.id [color: #e67e22]
+
+// ==========================================
+// 3. ESQUEMA DE VENTAS (SALES)
+// ==========================================
+
+Table sales.orders [headercolor: #27ae60] {
+  id uuid [primary key]
+  user_id uuid
+  status order_status [default: 'pending']
+  total decimal(12,2)
+  created_at timestamp
 }
 
-Table products [headercolor: #2ECC71] {
-  id integer [pk, increment]
-  name varchar(255) [not null]
-  description text
-  price decimal(10,2) [not null, default: 0]
-  stock integer [not null, default: 0, check: `stock >= 0`]
-  merchant_id integer [not null]
-  ~timestamps
+// Relación Uno-a-Muchos cruzando diferentes esquemas
+Ref: sales.orders.user_id > auth.users.id [color: #27ae60]
+
+Table sales.order_items [headercolor: #27ae60] {
+  id integer [primary key]
+  order_id uuid
+  product_id uuid
+  quantity integer [not null, default: 1]
+  unit_price decimal(10,2)
+  
+  Indexes {
+    (order_id, product_id) [unique]
+  }
 }
 
-Table orders {
-  id integer [pk, increment]
-  user_id integer [not null]
-  status order_status [not null, default: 'pending']
-  total decimal(10,2) [not null]
-  ~timestamps
+// Relación con regla de borrado en cascada
+Ref: sales.order_items.order_id > sales.orders.id [delete: cascade, color: #27ae60]
+Ref: sales.order_items.product_id > catalog.products.id [color: #e67e22]
+
+// ==========================================
+// 4. DEFINICIÓN DE ENUMS
+// ==========================================
+
+enum user_status {
+  active
+  suspended
+  banned
 }
 
-Table order_items {
-  id integer [pk, increment]
-  order_id integer [not null]
-  product_id integer [not null]
-  quantity integer [not null, check: `quantity > 0`]
-  unit_price decimal(10,2) [not null]
+enum order_status {
+  pending
+  processing
+  shipped
+  delivered
 }
 
-// Relationships
-Ref: products.merchant_id > merchants.id [delete: cascade]
-Ref: orders.user_id > users.id [delete: restrict]
-Ref: order_items.order_id > orders.id [delete: cascade]
-Ref: order_items.product_id > products.id [delete: restrict]
+// ==========================================
+// 5. GRUPOS DE TABLAS (Con nombres y colores)
+// ==========================================
 
-// Table Groups
-TableGroup core [color: #3498DB] {
-  users
-  merchants
+TableGroup "Security & Access" [color: #2b3a42] {
+  auth.users
+  auth.permissions
 }
 
-TableGroup commerce [color: #2ECC71] {
-  products
-  orders
-  order_items
+TableGroup "Inventory Management" [color: #e67e22] {
+  catalog.categories
+  catalog.products
+}
+
+TableGroup "Sales & Transactions" [color: #27ae60] {
+  sales.orders
+  sales.order_items
 }

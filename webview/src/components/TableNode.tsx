@@ -50,6 +50,20 @@ function TableNode({ data }: NodeProps) {
         {columns && columns.length > 0 ? (
           columns.map((col, idx) => (
             <div key={idx} className="table-node__column">
+              {/* Row-level handles on left side */}
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={`${col.name}-left-target`}
+                style={{ left: -4, top: '50%' }}
+              />
+              <Handle
+                type="source"
+                position={Position.Left}
+                id={`${col.name}-left-source`}
+                style={{ left: -4, top: '50%', visibility: 'hidden' }} // Only show on hover or connection? No, keep it for auto-connect
+              />
+
               {/* Icon */}
               <span className="table-node__col-icon">
                 {col.settings.primaryKey ? '🔑' : col.settings.ref ? '🔗' : '○'}
@@ -76,6 +90,20 @@ function TableNode({ data }: NodeProps) {
                   <span className="table-node__badge badge--nn">NN</span>
                 )}
               </div>
+
+              {/* Row-level handles on right side */}
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={`${col.name}-right-source`}
+                style={{ right: -4, top: '50%' }}
+              />
+              <Handle
+                type="target"
+                position={Position.Right}
+                id={`${col.name}-right-target`}
+                style={{ right: -4, top: '50%', visibility: 'hidden' }}
+              />
             </div>
           ))
         ) : (
@@ -100,9 +128,7 @@ function TableNode({ data }: NodeProps) {
         </div>
       )}
 
-      {/* Handles */}
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      {/* Handles are now row-level */}
     </div>
   );
 }
