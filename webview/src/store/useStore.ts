@@ -136,16 +136,17 @@ function recalcGroupBounds(
 }
 
 // ---- Dagre Layout ----
-function applyDagreLayout(nodes: Node[], edges: Edge[]): Node[] {
+// ---- Dagre Layout (Left-to-Right) ----
+function applyLeftRightLayout(nodes: Node[], edges: Edge[]): Node[] {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
     rankdir: 'LR',
-    nodesep: 60,
-    ranksep: 100,
-    edgesep: 30,
-    marginx: 40,
-    marginy: 40,
+    nodesep: 80,
+    ranksep: 120,
+    edgesep: 40,
+    marginx: 50,
+    marginy: 50,
   });
 
   for (const node of nodes) {
@@ -174,6 +175,78 @@ function applyDagreLayout(nodes: Node[], edges: Edge[]): Node[] {
       };
     }
     return node;
+  });
+}
+
+// ---- Snowflake Layout (Central Hubs) ----
+function applySnowflakeLayout(nodes: Node[], edges: Edge[]): Node[] {
+  if (nodes.length === 0) return nodes;
+
+  // 1. Calculate connectivity degree for each node
+  const degreeMap: Record<string, number> = {};
+  nodes.forEach(n => degreeMap[n.id] = 0);
+  edges.forEach(e => {
+    if (degreeMap[e.source] !== undefined) degreeMap[e.source]++;
+    if (degreeMap[e.target] !== undefined) degreeMap[e.target]++;
+  });
+
+  // 2. Sort nodes by connectivity (descending)
+  const sortedNodes = [...nodes].sort((a, b) => (degreeMap[b.id] || 0) - (degreeMap[a.id] || 0));
+
+  // 3. Place nodes in a spiral/radial pattern
+  const centerX = 500;
+  const centerY = 500;
+  
+  return nodes.map((node) => {
+    const index = sortedNodes.findIndex(n => n.id === node.id);
+    if (index === 0) {
+      // Re-center first node
+      return { ...node, position: { x: centerX, y: centerY } };
+    }
+
+    // Radial layout: items are placed in expanding layers
+    // Radius increases with index, angle increments
+    const layer = Math.floor(Math.sqrt(index));
+    const angle = (index * 137.5) * (Math.PI / 180); // Golden angle
+    const radius = layer * 450;
+
+    return {
+      ...node,
+      position: {
+        x: centerX + radius * Math.cos(angle) - NODE_WIDTH / 2,
+        y: centerY + radius * Math.sin(angle) - (getNodeHeight(node.type || 'tableNode', (node.data as any).columns?.length || 0) / 2),
+      },
+    };
+  });
+}
+
+// ---- Compact Layout (Grid Rectangle) ----
+function applyCompactLayout(nodes: Node[]): Node[] {
+  if (nodes.length === 0) return nodes;
+
+  const cols = Math.ceil(Math.sqrt(nodes.length));
+  const spacingX = 400;
+  const spacingY = 400;
+
+  // Sort nodes by name or type
+  const sortedNodes = [...nodes].sort((a, b) => {
+    const nameA = (a.data as any).name || '';
+    const nameB = (b.data as any).name || '';
+    return nameA.localeCompare(nameB);
+  });
+
+  return nodes.map((node) => {
+    const index = sortedNodes.findIndex(n => n.id === node.id);
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+
+    return {
+      ...node,
+      position: {
+        x: col * spacingX,
+        y: row * spacingY,
+      },
+    };
   });
 }
 
@@ -213,7 +286,7 @@ interface DiagramState {
   onEdgesChange: OnEdgesChange;
   setSchema: (schema: DbmlSchema) => void;
   toggleGroupCollapse: (groupId: string) => void;
-  adjustLayout: () => void;
+  adjustLayout: (algorithm?: 'left-right' | 'snowflake' | 'compact') => void;
 }
 
 export const useDiagramStore = create<DiagramState>((set, get) => ({
@@ -226,15 +299,28 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   // ──────────────────────────────────────────────
   // Manual Layout Trigger
   // ──────────────────────────────────────────────
-  adjustLayout: () => {
-    const { nodes, edges, groupMembership, schema } = get();
+  adjustLayout: (algorithm = 'left-right') => {
+    const { nodes, edges, groupMembership } = get();
     if (!nodes.length) return;
 
     // 1. Separate groups from basic nodes
     const basicNodes = nodes.filter(n => n.type !== 'groupNode');
     
-    // 2. Apply Dagre to basic nodes
-    const layoutedBasicNodes = applyDagreLayout(basicNodes, edges);
+    // 2. Apply chosen algorithm to basic nodes
+    let layoutedBasicNodes: Node[];
+    
+    switch (algorithm) {
+      case 'snowflake':
+        layoutedBasicNodes = applySnowflakeLayout(basicNodes, edges);
+        break;
+      case 'compact':
+        layoutedBasicNodes = applyCompactLayout(basicNodes);
+        break;
+      case 'left-right':
+      default:
+        layoutedBasicNodes = applyLeftRightLayout(basicNodes, edges);
+        break;
+    }
     
     // 3. Re-calculate group bounds based on new positions
     let newNodes = [...layoutedBasicNodes];
@@ -446,7 +532,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     }
 
     // -- Dagre layout (tables + enums only) --
-    const layoutedNodes = applyDagreLayout(nodes, edges);
+    const layoutedNodes = applyLeftRightLayout(nodes, edges);
 
     // -- Build group membership & create group nodes --
     const groupMembership: Record<string, string> = {};
@@ -458,7 +544,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
 
       for (const tName of group.tables) {
         const nodeId = `table-${tName}`;
-        if (layoutedNodes.find((n) => n.id === nodeId)) {
+        if (layoutedNodes.find((n: Node) => n.id === nodeId)) {
           groupMembership[nodeId] = groupId;
           memberIds.push(nodeId);
         }
@@ -466,7 +552,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
 
       if (memberIds.length === 0) continue;
 
-      const memberNodes = layoutedNodes.filter((n) => memberIds.includes(n.id));
+      const memberNodes = layoutedNodes.filter((n: Node) => memberIds.includes(n.id));
       const bounds = calcBoundingBox(memberNodes);
 
       groupNodes.push({

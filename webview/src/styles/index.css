@@ -444,3 +444,105 @@ html, body, #root {
 .toolbar-btn span {
   opacity: 0.9;
 }
+
+/* ---- Layout Menu ---- */
+.layout-menu-container {
+  position: relative;
+}
+
+.layout-menu {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 12px);
+  width: 320px;
+  background: var(--node-bg);
+  border: 1px solid var(--node-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1000;
+  animation: menuFadeIn 0.2s ease-out;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+@keyframes menuFadeIn {
+  from { opacity: 0; transform: translateX(10px) scale(0.95); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.layout-menu__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--node-fg);
+  margin-bottom: 4px;
+  padding: 0 4px;
+}
+
+.layout-option {
+  display: flex;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  position: relative;
+  text-align: left;
+}
+
+.layout-option:hover {
+  background: var(--node-hover);
+  border-color: var(--node-border);
+}
+
+.layout-option--active {
+  background: var(--node-hover);
+  border-color: var(--edge-color);
+}
+
+.layout-option__icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 20px;
+  flex-shrink: 0;
+  color: var(--edge-color);
+}
+
+.layout-option__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.layout-option__name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: var(--node-fg);
+}
+
+.layout-option__description {
+  font-size: 11px;
+  opacity: 0.6;
+  line-height: 1.4;
+}
+
+.layout-option__hotkey {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0.5;
+}
