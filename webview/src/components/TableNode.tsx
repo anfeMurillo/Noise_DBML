@@ -25,18 +25,24 @@ interface ColumnData {
   };
 }
 
+interface IndexNode {
+  columns: { value: string; isExpression: boolean }[];
+  settings: { unique: boolean; pk: boolean; type?: 'btree' | 'hash'; name?: string };
+}
+
 interface TableNodeData {
   name: string;
   schema?: string;
   alias?: string;
   columns: ColumnData[];
+  indexes?: IndexNode[];
   note?: string;
   headerColor?: string;
   [key: string]: unknown;
 }
 
 function TableNode({ id, data }: NodeProps) {
-  const { name, schema, alias, columns, note, headerColor } = data as unknown as TableNodeData;
+  const { name, schema, alias, columns, indexes, note, headerColor } = data as unknown as TableNodeData;
   const displayName = alias ? `${name} (${alias})` : name;
   const fullName = schema ? `${schema}.${displayName}` : displayName;
 
@@ -51,6 +57,8 @@ function TableNode({ id, data }: NodeProps) {
     return connected;
   }, [edges, id]);
 
+  const hasIndexes = indexes && indexes.length > 0;
+
   return (
     <div className="table-node">
       {/* Header */}
@@ -58,8 +66,10 @@ function TableNode({ id, data }: NodeProps) {
         className="table-node__header"
         style={headerColor ? { background: headerColor } : undefined}
       >
-        <span className="table-node__header-icon">🗃️</span>
-        <span>{fullName}</span>
+        <div className="flex items-center gap-1.5 overflow-hidden">
+          <span className="table-node__header-icon text-sm">🗃️</span>
+          <span className="truncate">{fullName}</span>
+        </div>
       </div>
 
       {/* Columns */}
@@ -182,6 +192,31 @@ function TableNode({ id, data }: NodeProps) {
           </div>
         )}
       </div>
+
+      {/* Indexes */}
+      {hasIndexes && (
+        <div className="table-node__indexes">
+          <div className="table-node__indexes-title">
+            <span>⚡</span> Indexes
+          </div>
+          <div className="space-y-0.5">
+            {indexes.map((idx, i) => {
+              const colNames = idx.columns.map(c => c.value).join(', ');
+              return (
+                <div key={i} className="table-node__index-item group/index">
+                  <span className="table-node__index-cols">
+                    ({colNames})
+                  </span>
+                  <div className="table-node__index-badges">
+                    {idx.settings.unique && <span className="table-node__index-badge">UQ</span>}
+                    {idx.settings.pk && <span className="table-node__index-badge">PK</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Table Note at bottom - strictly for table note */}
       {note && (

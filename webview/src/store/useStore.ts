@@ -446,6 +446,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
           schema: table.schema,
           alias: table.alias,
           columns: enrichedColumns,
+          indexes: table.indexes, // Passed directly from AST
           note: table.note,
           headerColor: table.settings?.headerColor,
         },

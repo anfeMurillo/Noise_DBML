@@ -1,0 +1,127 @@
+// ==========================================
+// 1. ENUMERACIONES (Tipos de datos estandarizados)
+// ==========================================
+Enum order_status {
+  pending
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+Enum payment_method {
+  credit_card
+  paypal
+  bank_transfer
+  stripe
+}
+
+// ==========================================
+// 2. AGRUPACIÓN DE TABLAS (Visualización)
+// ==========================================
+TableGroup ECommerce {
+  users
+  orders
+  order_items
+  payments
+}
+
+TableGroup Catalog {
+  products
+  categories
+  reviews
+}
+
+// ==========================================
+// 3. DEFINICIÓN DE TABLAS
+// ==========================================
+
+Table users [headercolor: #3498db] {
+  id uuid [primary key, default: `uuid_generate_v4()`]
+  username varchar(50) [not null, unique]
+  email varchar(255) [not null, unique, note: 'Correo electrónico validado del usuario']
+  password_hash varchar(255) [not null]
+  created_at timestamp [default: `now()`]
+  is_active boolean [default: true]
+
+  // Índices para optimizar búsquedas frecuentes
+  indexes {
+    (username, email) [unique]
+  }
+}
+
+Table categories [headercolor: #2ecc71] {
+  id int [primary key, increment]
+  parent_id int [note: 'Permite subcategorías (Relación recursiva)']
+  name varchar(100) [not null]
+  description text
+}
+
+Table products [headercolor: #2ecc71] {
+  id uuid [primary key]
+  category_id int [not null]
+  name varchar(200) [not null]
+  price decimal(10, 2) [not null, note: 'Precio base sin impuestos']
+  stock_quantity int [default: 0]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    category_id
+    name
+  }
+}
+
+Table orders [headercolor: #e74c3c] {
+  id int [primary key, increment]
+  user_id uuid [not null]
+  status order_status [default: 'pending']
+  total_amount decimal(12, 2) [not null]
+  created_at timestamp [default: `now()`]
+}
+
+Table order_items {
+  order_id int
+  product_id uuid
+  quantity int [not null, default: 1]
+  unit_price decimal(10, 2) [not null]
+
+  // Llave primaria compuesta
+  indexes {
+    (order_id, product_id) [pk] 
+  }
+}
+
+Table payments {
+  id int [primary key, increment]
+  order_id int [unique, not null, note: 'Una orden solo puede tener un pago exitoso']
+  amount decimal(12, 2) [not null]
+  method payment_method [not null]
+  processed_at timestamp
+}
+
+Table reviews {
+  id int [primary key, increment]
+  product_id uuid [not null]
+  user_id uuid [not null]
+  rating int [not null, note: 'Valor numérico del 1 al 5']
+  comment text
+  created_at timestamp [default: `now()`]
+}
+
+// ==========================================
+// 4. RELACIONES (Foreign Keys)
+// ==========================================
+
+// Relación recursiva (Una categoría puede pertenecer a otra categoría)
+Ref: categories.parent_id > categories.id 
+
+// Relaciones Uno a Muchos (>)
+Ref: products.category_id > categories.id
+Ref: orders.user_id > users.id
+Ref: order_items.order_id > orders.id
+Ref: order_items.product_id > products.id
+Ref: reviews.product_id > products.id
+Ref: reviews.user_id > users.id
+
+// Relaciones Uno a Uno (-)
+Ref: payments.order_id - orders.id

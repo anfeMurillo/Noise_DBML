@@ -79,7 +79,8 @@
     "watch": "node esbuild.js --watch",
     "build:webview": "cd webview && npm run build",
     "prepackage": "npm run build:webview && npm run build",
-    "lint": "eslint src --ext ts"
+    "lint": "eslint src --ext ts",
+    "lint:dbml": "ts-node src/cli/lint.ts"
   },
   "dependencies": {
     "chevrotain": "^11.0.3"
@@ -88,6 +89,7 @@
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.21.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.4.0"
   }
 }

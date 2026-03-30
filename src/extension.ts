@@ -4,9 +4,13 @@
 
 import * as vscode from 'vscode';
 import { DiagramTabProvider } from './providers/DiagramTabProvider';
+import { LinterProvider } from './providers/LinterProvider';
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Noise DBML extension activated');
+
+  // ── 0. Linter provider (Diagnostics) ───────────────────────────────────
+  new LinterProvider(context);
 
   // ── 1. Diagram tab provider ──────────────────────────────────────────
   const diagramTabProvider = new DiagramTabProvider(context.extensionUri);

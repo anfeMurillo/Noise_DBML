@@ -660,6 +660,57 @@ html, body, #root {
   line-height: 1.4;
 }
 
+/* ---- Table Indexes ---- */
+.table-node__indexes {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--node-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.table-node__indexes-title {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--node-fg);
+  opacity: 0.4;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.5px;
+}
+
+.table-node__index-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
+  font-size: 11px;
+}
+
+.table-node__index-cols {
+  color: var(--node-fg);
+  opacity: 0.75;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.table-node__index-badges {
+  display: flex;
+  gap: 4px;
+}
+
+.table-node__index-badge {
+  font-size: 8px;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  color: var(--node-fg);
+  opacity: 0.6;
+  font-weight: 700;
+}
+
 .table-node__footer-note-icon {
   font-size: 10px;
   flex-shrink: 0;

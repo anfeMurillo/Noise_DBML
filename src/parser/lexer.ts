@@ -14,13 +14,13 @@ export const WhiteSpace = createToken({
 export const LineComment = createToken({
   name: 'LineComment',
   pattern: /\/\/[^\n\r]*/,
-  group: 'comments',
+  group: Lexer.SKIPPED,
 });
 
 export const BlockComment = createToken({
   name: 'BlockComment',
   pattern: /\/\*[\s\S]*?\*\//,
-  group: 'comments',
+  group: Lexer.SKIPPED,
 });
 
 // ---- Keywords ----

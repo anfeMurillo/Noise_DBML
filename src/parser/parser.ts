@@ -117,6 +117,15 @@ export class DbmlParser extends CstParser {
       { ALT: () => this.CONSUME(Hash) },
       { ALT: () => this.CONSUME(True) },
       { ALT: () => this.CONSUME(False) },
+      { ALT: () => this.CONSUME(Ref) },
+      { ALT: () => this.CONSUME(Enum) },
+      { ALT: () => this.CONSUME(Table) },
+      { ALT: () => this.CONSUME(Project) },
+      { ALT: () => this.CONSUME(Increment) },
+      { ALT: () => this.CONSUME(NotNull) },
+      { ALT: () => this.CONSUME(PrimaryKey) },
+      { ALT: () => this.CONSUME(Pk) },
+      { ALT: () => this.CONSUME(TableGroup) },
     ]);
   });
 
@@ -248,6 +257,7 @@ export class DbmlParser extends CstParser {
   private settingValue = this.RULE('settingValue', () => {
     this.OR([
       { ALT: () => this.CONSUME(NumberLiteral) },
+      { ALT: () => this.CONSUME(Identifier) },
       { ALT: () => this.CONSUME(True) },
       { ALT: () => this.CONSUME(False) },
       { ALT: () => this.CONSUME(Null) },
@@ -286,7 +296,7 @@ export class DbmlParser extends CstParser {
   private indexColumnItem = this.RULE('indexColumnItem', () => {
     this.OR([
       { ALT: () => this.CONSUME(BacktickExpression, { LABEL: 'expr' }) },
-      { ALT: () => this.CONSUME(Identifier, { LABEL: 'colId' }) },
+      { ALT: () => this.SUBRULE(this.columnName, { LABEL: 'colName' }) },
     ]);
   });
 
@@ -522,10 +532,16 @@ export class DbmlParser extends CstParser {
 
   // ---- Helpers ----
   private qualifiedName = this.RULE('qualifiedName', () => {
-    this.CONSUME(Identifier, { LABEL: 'firstName' });
+    this.OR([
+      { ALT: () => this.CONSUME(Identifier, { LABEL: 'firstName' }) },
+      { ALT: () => this.CONSUME(DoubleQuoteString, { LABEL: 'quotedFirstName' }) },
+    ]);
     this.OPTION(() => {
       this.CONSUME(Dot);
-      this.CONSUME2(Identifier, { LABEL: 'secondName' });
+      this.OR2([
+        { ALT: () => this.CONSUME2(Identifier, { LABEL: 'secondName' }) },
+        { ALT: () => this.CONSUME2(DoubleQuoteString, { LABEL: 'quotedSecondName' }) },
+      ]);
     });
   });
 
