@@ -59,6 +59,10 @@ export class DiagramTabProvider {
         const key = `positions-${filePath.replace(/\\/g, '/')}`;
         await this._context.workspaceState.update(key, message.positions);
       }
+      if (message.type === 'updateStickyNotes') {
+        const key = `stickyNotes-${filePath.replace(/\\/g, '/')}`;
+        await this._context.workspaceState.update(key, message.stickyNotes);
+      }
       if (message.type === 'error') {
         vscode.window.showErrorMessage(
           `DBML Diagram Error: ${message.text}`,
@@ -89,9 +93,11 @@ export class DiagramTabProvider {
       const text = fs.readFileSync(filePath, 'utf8');
       const schema = parseDbml(text);
       if (schema) {
-        const key = `positions-${filePath.replace(/\\/g, '/')}`;
-        const positions = this._context.workspaceState.get(key);
-        panel.webview.postMessage({ type: 'update', schema, positions });
+        const posKey = `positions-${filePath.replace(/\\/g, '/')}`;
+        const stickyKey = `stickyNotes-${filePath.replace(/\\/g, '/')}`;
+        const positions = this._context.workspaceState.get(posKey);
+        const stickyNotes = this._context.workspaceState.get(stickyKey);
+        panel.webview.postMessage({ type: 'update', schema, positions, stickyNotes });
       }
     } catch (err) {
       console.error(`[NoiseDBML] Failed to read ${filePath}:`, err);

@@ -23,7 +23,7 @@ interface DbmlSchema {
   refs: RefDef[];
   tableGroups: TableGroupDef[];
   tablePartials: any[];
-  stickyNotes: any[];
+  stickyNotes?: { id: string; x: number; y: number; text: string; width?: number; height?: number }[];
 }
 
 interface TableDef {
@@ -101,6 +101,8 @@ function getNodeHeight(node: Node): number {
     if (data.note) {
       height += FOOTER_NOTE_HEIGHT;
     }
+  } else if (type === 'stickyNoteNode') {
+    height = (node.style as any)?.height || 200;
   }
 
   return height;
@@ -297,9 +299,18 @@ interface DiagramState {
 
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
-  setSchema: (schema: DbmlSchema, initialPositions?: Record<string, { x: number; y: number }>) => void;
+  setSchema: (
+    schema: DbmlSchema, 
+    initialPositions?: Record<string, { x: number; y: number }>,
+    initialStickyNotes?: { id: string; x: number; y: number; text: string; width?: number; height?: number }[]
+  ) => void;
   toggleGroupCollapse: (groupId: string) => void;
   adjustLayout: (algorithm?: 'left-right' | 'snowflake' | 'compact') => void;
+  
+  // -- Sticky Note Actions --
+  addStickyNote: (position: { x: number; y: number }) => void;
+  updateStickyNote: (id: string, data: Partial<{ text: string; x: number; y: number; width?: number; height?: number }>) => void;
+  deleteStickyNote: (id: string) => void;
 }
 
 import { getVsCodeApi } from '../vscode';
@@ -318,8 +329,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     const { nodes, edges, groupMembership } = get();
     if (!nodes.length) return;
 
-    // 1. Separate groups from basic nodes
-    const basicNodes = nodes.filter(n => n.type !== 'groupNode');
+    // 1. Separate groups and sticky notes from basic nodes
+    const basicNodes = nodes.filter(n => n.type !== 'groupNode' && n.type !== 'stickyNoteNode');
     
     // 2. Apply chosen algorithm to basic nodes
     let layoutedBasicNodes: Node[];
@@ -437,6 +448,22 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       }
       getVsCodeApi().postMessage({ type: 'updatePositions', positions });
     }
+
+    // 5. Detect and save sticky notes data if they changed
+    const stickyNoteNodes = newNodes.filter(n => n.type === 'stickyNoteNode');
+    const stickyNotesData = stickyNoteNodes.map(n => ({
+        id: n.id,
+        x: n.position.x,
+        y: n.position.y,
+        text: (n.data as any).text,
+        width: (n.style as any)?.width,
+        height: (n.style as any)?.height,
+    }));
+    
+    // Always update sticky notes if there's any change related to them (like dragging or content update)
+    if (changes.some(c => stickyNoteNodes.some(sn => sn.id === (c as any).id || (c as any).item?.id === sn.id))) {
+        getVsCodeApi().postMessage({ type: 'updateStickyNotes', stickyNotes: stickyNotesData });
+    }
   },
 
   onEdgesChange: (changes) => {
@@ -446,13 +473,36 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   // ──────────────────────────────────────────────
   // Schema → Nodes + Edges
   // ──────────────────────────────────────────────
-  setSchema: (schema: DbmlSchema, initialPositions?: Record<string, { x: number; y: number }>) => {
+  setSchema: (
+    schema: DbmlSchema, 
+    initialPositions?: Record<string, { x: number; y: number }>,
+    initialStickyNotes?: { id: string; x: number; y: number; text: string; width?: number; height?: number }[]
+  ) => {
     if (!schema || !schema.tables) {
        set({ nodes: [], edges: [], schema: null, groupMembership: {}, collapsedGroups: {} });
        return;
     }
     const nodes: Node[] = [];
     const edges: Edge[] = [];
+
+    // -- Sticky Notes (from persistence) --
+    if (initialStickyNotes) {
+      for (const note of initialStickyNotes) {
+        nodes.push({
+          id: note.id,
+          type: 'stickyNoteNode',
+          position: { x: note.x, y: note.y },
+          data: { text: note.text },
+          zIndex: 15,
+          // Casting to any to avoid NodeBase lint issues if width/height/style are not in the base type
+          ...({
+            width: note.width || 200,
+            height: note.height || 200,
+            style: { width: note.width || 200, height: note.height || 200 },
+          } as any),
+        });
+      }
+    }
 
     // -- Table Nodes --
     for (const table of schema.tables) {
@@ -712,5 +762,94 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     }
 
     set({ nodes: newNodes, edges: newEdges, collapsedGroups: newCollapsed });
+  },
+
+  // ──────────────────────────────────────────────
+  // Sticky Notes Actions
+  // ──────────────────────────────────────────────
+  addStickyNote: (position) => {
+    const id = `sticky-${Date.now()}`;
+    const newNode: Node = {
+      id,
+      type: 'stickyNoteNode',
+      position,
+      width: 200,
+      height: 200,
+      style: { width: 200, height: 200 },
+      data: { text: '' },
+      zIndex: 15,
+    };
+
+    const newNodes = [...get().nodes, newNode];
+    set({ nodes: newNodes });
+
+    // Inform persistence
+    const stickyNotesData = newNodes
+      .filter(n => n.type === 'stickyNoteNode')
+      .map(n => ({
+        id: n.id,
+        x: n.position.x,
+        y: n.position.y,
+        text: (n.data as any).text,
+        width: (n.style as any)?.width,
+        height: (n.style as any)?.height,
+      }));
+    getVsCodeApi().postMessage({ type: 'updateStickyNotes', stickyNotes: stickyNotesData });
+  },
+
+  updateStickyNote: (id, data) => {
+    const newNodes = get().nodes.map((node) => {
+      if (node.id === id) {
+        const newData = { ...(node.data as any) };
+        if (data.text !== undefined) newData.text = data.text;
+        
+        return {
+          ...node,
+          position: data.x !== undefined || data.y !== undefined
+            ? { x: data.x ?? node.position.x, y: data.y ?? node.position.y }
+            : node.position,
+          style: {
+            ...node.style,
+            width: data.width ?? (node.style as any)?.width,
+            height: data.height ?? (node.style as any)?.height,
+          },
+          data: newData,
+        };
+      }
+      return node;
+    });
+
+    set({ nodes: newNodes });
+
+    // Inform persistence
+    const stickyNotesData = newNodes
+      .filter(n => n.type === 'stickyNoteNode')
+      .map(n => ({
+        id: n.id,
+        x: n.position.x,
+        y: n.position.y,
+        text: (n.data as any).text,
+        width: (n.style as any)?.width,
+        height: (n.style as any)?.height,
+      }));
+    getVsCodeApi().postMessage({ type: 'updateStickyNotes', stickyNotes: stickyNotesData });
+  },
+
+  deleteStickyNote: (id) => {
+    const newNodes = get().nodes.filter((node) => node.id !== id);
+    set({ nodes: newNodes });
+
+    // Inform persistence
+    const stickyNotesData = newNodes
+      .filter(n => n.type === 'stickyNoteNode')
+      .map(n => ({
+        id: n.id,
+        x: n.position.x,
+        y: n.position.y,
+        text: (n.data as any).text,
+        width: (n.style as any)?.width,
+        height: (n.style as any)?.height,
+      }));
+    getVsCodeApi().postMessage({ type: 'updateStickyNotes', stickyNotes: stickyNotesData });
   },
 }));

@@ -40,9 +40,19 @@ const IconSave = () => (
   </svg>
 );
 
+const IconStickyNote = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z" />
+    <path d="M15 3v6h6" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="12" y2="17" />
+  </svg>
+);
+
 export default function Toolbar() {
   const adjustLayout = useDiagramStore((s) => s.adjustLayout);
-  const { getNodes } = useReactFlow();
+  const addStickyNote = useDiagramStore((s) => s.addStickyNote);
+  const { getNodes, screenToFlowPosition, getViewport } = useReactFlow();
   const { postMessage } = useVSCodeMessaging(() => {});
   
   const [menuOpen, setMenuOpen] = useState(false);
@@ -130,6 +140,16 @@ export default function Toolbar() {
     }
   };
 
+  const onAddStickyNote = () => {
+    const viewport = getViewport();
+    // Center of the current view
+    const center = screenToFlowPosition({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    });
+    addStickyNote({ x: center.x - 100, y: center.y - 100 });
+  };
+
   return (
     <Panel position="top-right" className="canvas-toolbar">
       <div className="toolbar-group">
@@ -182,6 +202,15 @@ export default function Toolbar() {
             </div>
           )}
         </div>
+
+        <button 
+          className="toolbar-btn" 
+          onClick={onAddStickyNote}
+          title="Add Sticky Note"
+        >
+          <IconStickyNote />
+          <span>Sticky Note</span>
+        </button>
 
         <button 
           className="toolbar-btn" 

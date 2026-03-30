@@ -14,6 +14,7 @@ import { useDiagramStore } from '../store/useStore';
 import TableNode from './TableNode';
 import EnumNode from './EnumNode';
 import TableGroupNode from './TableGroupNode';
+import { StickyNoteNode } from './StickyNoteNode';
 import DbmlEdge from './DbmlEdge';
 import Toolbar from './Toolbar';
 
@@ -21,6 +22,7 @@ const nodeTypes = {
   tableNode: TableNode,
   enumNode: EnumNode,
   groupNode: TableGroupNode,
+  stickyNoteNode: StickyNoteNode,
 };
 
 const edgeTypes = {
