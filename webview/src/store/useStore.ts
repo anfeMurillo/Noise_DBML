@@ -78,13 +78,32 @@ const TABLE_HEADER_HEIGHT = 36;
 const ENUM_ROW_HEIGHT = 28;
 const GROUP_PADDING = 24;
 const GROUP_HEADER_HEIGHT = 42;
+const INDEX_SECTION_BASE_HEIGHT = 40;
+const INDEX_ROW_HEIGHT = 20;
+const FOOTER_NOTE_HEIGHT = 42;
 const COLLAPSED_WIDTH = 220;
 const COLLAPSED_HEIGHT = 64;
 
-function getNodeHeight(type: string, itemCount: number): number {
+function getNodeHeight(node: Node): number {
+  const type = node.type || 'tableNode';
+  const data = node.data as any;
+  
   const baseHeight = type === 'tableNode' ? TABLE_HEADER_HEIGHT : 36;
   const rowHeight = type === 'tableNode' ? TABLE_ROW_HEIGHT : ENUM_ROW_HEIGHT;
-  return baseHeight + Math.max(1, itemCount) * rowHeight + 8;
+  const itemCount = type === 'tableNode' ? (data.columns?.length || 0) : (data.values?.length || 0);
+  
+  let height = baseHeight + Math.max(1, itemCount) * rowHeight + 8;
+
+  if (type === 'tableNode') {
+    if (data.indexes && data.indexes.length > 0) {
+      height += INDEX_SECTION_BASE_HEIGHT + (data.indexes.length * INDEX_ROW_HEIGHT);
+    }
+    if (data.note) {
+      height += FOOTER_NOTE_HEIGHT;
+    }
+  }
+
+  return height;
 }
 
 // ---- Bounding-box helpers ----
@@ -92,10 +111,7 @@ function calcBoundingBox(nodes: Node[]): { x: number; y: number; width: number; 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of nodes) {
     const w = (n.measured?.width) ?? NODE_WIDTH;
-    const h = (n.measured?.height) ?? getNodeHeight(
-      n.type || 'tableNode',
-      ((n.data as any).columns?.length || (n.data as any).values?.length || 0),
-    );
+    const h = (n.measured?.height) ?? getNodeHeight(n);
     minX = Math.min(minX, n.position.x);
     minY = Math.min(minY, n.position.y);
     maxX = Math.max(maxX, n.position.x + w);
@@ -150,10 +166,7 @@ function applyLeftRightLayout(nodes: Node[], edges: Edge[]): Node[] {
   });
 
   for (const node of nodes) {
-    const height =
-      node.type === 'tableNode'
-        ? getNodeHeight('tableNode', (node.data as any).columns?.length || 0)
-        : getNodeHeight('enumNode', (node.data as any).values?.length || 0);
+    const height = getNodeHeight(node);
     g.setNode(node.id, { width: NODE_WIDTH, height });
   }
 
@@ -214,7 +227,7 @@ function applySnowflakeLayout(nodes: Node[], edges: Edge[]): Node[] {
       ...node,
       position: {
         x: centerX + radius * Math.cos(angle) - NODE_WIDTH / 2,
-        y: centerY + radius * Math.sin(angle) - (getNodeHeight(node.type || 'tableNode', (node.data as any).columns?.length || 0) / 2),
+        y: centerY + radius * Math.sin(angle) - (getNodeHeight(node) / 2),
       },
     };
   });
