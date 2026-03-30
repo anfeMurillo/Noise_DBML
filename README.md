@@ -1,4 +1,4 @@
-# Noise DBML extension for Visual Studio Code
+![Noise DBML Example](./assets/images/example.png)
 
 Noise DBML is a tool designed for visualizing and editing database diagrams using the DBML (Database Markup Language) standard. This extension allows developers to design data schemas declaratively, obtaining an interactive graphical representation updated in real-time.
 

@@ -2,8 +2,12 @@
   "name": "noise-dbml",
   "displayName": "Noise DBML",
   "description": "Syntax highlighting, code snippets, and interactive ER diagrams for DBML (Database Markup Language) files.",
-  "version": "0.1.0",
-  "publisher": "noise",
+  "version": "1.0.0",
+  "publisher": "AndrsFelipeMurillo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anfeMurillo/Noise_DBML"
+  },
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
