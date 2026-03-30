@@ -13,7 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
   new LinterProvider(context);
 
   // ── 1. Diagram tab provider ──────────────────────────────────────────
-  const diagramTabProvider = new DiagramTabProvider(context.extensionUri);
+  const diagramTabProvider = new DiagramTabProvider(context);
 
   // ── 2. Commands ──────────────────────────────────────────────────────
 

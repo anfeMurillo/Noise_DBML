@@ -11,7 +11,7 @@ export class DiagramTabProvider {
   /** Map from file path → open WebviewPanel */
   private static _panels = new Map<string, vscode.WebviewPanel>();
 
-  constructor(private readonly _extensionUri: vscode.Uri) {}
+  constructor(private readonly _context: vscode.ExtensionContext) {}
 
   /**
    * Opens (or re-focuses) a diagram tab for the given .dbml file URI.
@@ -38,7 +38,7 @@ export class DiagramTabProvider {
         enableScripts: true,
         retainContextWhenHidden: true,
         localResourceRoots: [
-          vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview'),
+          vscode.Uri.joinPath(this._context.extensionUri, 'dist', 'webview'),
         ],
       },
     );
@@ -54,6 +54,10 @@ export class DiagramTabProvider {
       }
       if (message.type === 'saveImage' && message.dataUrl) {
         await this._saveImage(message.dataUrl);
+      }
+      if (message.type === 'updatePositions') {
+        const key = `positions-${filePath.replace(/\\/g, '/')}`;
+        await this._context.workspaceState.update(key, message.positions);
       }
       if (message.type === 'error') {
         vscode.window.showErrorMessage(
@@ -85,7 +89,9 @@ export class DiagramTabProvider {
       const text = fs.readFileSync(filePath, 'utf8');
       const schema = parseDbml(text);
       if (schema) {
-        panel.webview.postMessage({ type: 'update', schema });
+        const key = `positions-${filePath.replace(/\\/g, '/')}`;
+        const positions = this._context.workspaceState.get(key);
+        panel.webview.postMessage({ type: 'update', schema, positions });
       }
     } catch (err) {
       console.error(`[NoiseDBML] Failed to read ${filePath}:`, err);
@@ -94,10 +100,10 @@ export class DiagramTabProvider {
 
   private _getHtml(webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview', 'index.js'),
+      vscode.Uri.joinPath(this._context.extensionUri, 'dist', 'webview', 'index.js'),
     );
     const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview', 'index.css'),
+      vscode.Uri.joinPath(this._context.extensionUri, 'dist', 'webview', 'index.css'),
     );
 
     const nonce = getNonce();

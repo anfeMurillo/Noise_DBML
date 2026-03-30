@@ -3,22 +3,7 @@
 // ============================================================
 
 import { useEffect, useRef, useCallback } from 'react';
-
-interface VsCodeApi {
-  postMessage(message: unknown): void;
-  getState(): unknown;
-  setState(state: unknown): void;
-}
-
-let vscodeApi: VsCodeApi | null = null;
-
-function getVsCodeApi(): VsCodeApi {
-  if (!vscodeApi) {
-    // @ts-ignore — acquireVsCodeApi is injected by VS Code
-    vscodeApi = acquireVsCodeApi();
-  }
-  return vscodeApi!;
-}
+import { getVsCodeApi } from '../vscode';
 
 type MessageHandler = (message: any) => void;
 

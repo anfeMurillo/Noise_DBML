@@ -284,10 +284,12 @@ interface DiagramState {
 
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
-  setSchema: (schema: DbmlSchema) => void;
+  setSchema: (schema: DbmlSchema, initialPositions?: Record<string, { x: number; y: number }>) => void;
   toggleGroupCollapse: (groupId: string) => void;
   adjustLayout: (algorithm?: 'left-right' | 'snowflake' | 'compact') => void;
 }
+
+import { getVsCodeApi } from '../vscode';
 
 export const useDiagramStore = create<DiagramState>((set, get) => ({
   nodes: [],
@@ -335,6 +337,15 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     }
 
     set({ nodes: newNodes });
+
+    // Send the new positions to extension
+    const positions: Record<string, { x: number; y: number }> = {};
+    for (const n of newNodes) {
+      if (n.type !== 'groupNode') {
+        positions[n.id] = n.position;
+      }
+    }
+    getVsCodeApi().postMessage({ type: 'updatePositions', positions });
   },
 
   // ──────────────────────────────────────────────
@@ -349,33 +360,35 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     const draggedGroupIds = new Set<string>();
     const childChanges: NodeChange[] = [];
 
+    let hasPositionChange = false;
+
     for (const change of changes) {
-      if (
-        change.type === 'position' &&
-        change.id.startsWith('group-') &&
-        change.position
-      ) {
-        draggedGroupIds.add(change.id);
-        const groupNode = currentNodes.find((n) => n.id === change.id);
-        if (!groupNode) continue;
+      if (change.type === 'position' && change.position) {
+        hasPositionChange = true;
 
-        const dx = change.position.x - groupNode.position.x;
-        const dy = change.position.y - groupNode.position.y;
+        if (change.id.startsWith('group-')) {
+          draggedGroupIds.add(change.id);
+          const groupNode = currentNodes.find((n) => n.id === change.id);
+          if (!groupNode) continue;
 
-        // Create matching position changes for every member table
-        for (const [tableId, gId] of Object.entries(groupMembership)) {
-          if (gId !== change.id) continue;
-          const tableNode = currentNodes.find((n) => n.id === tableId);
-          if (!tableNode) continue;
+          const dx = change.position.x - groupNode.position.x;
+          const dy = change.position.y - groupNode.position.y;
 
-          childChanges.push({
-            type: 'position',
-            id: tableId,
-            position: {
-              x: tableNode.position.x + dx,
-              y: tableNode.position.y + dy,
-            },
-          } as NodeChange);
+          // Create matching position changes for every member table
+          for (const [tableId, gId] of Object.entries(groupMembership)) {
+            if (gId !== change.id) continue;
+            const tableNode = currentNodes.find((n) => n.id === tableId);
+            if (!tableNode) continue;
+
+            childChanges.push({
+              type: 'position',
+              id: tableId,
+              position: {
+                x: tableNode.position.x + dx,
+                y: tableNode.position.y + dy,
+              },
+            } as NodeChange);
+          }
         }
       }
     }
@@ -400,6 +413,17 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     }
 
     set({ nodes: newNodes });
+
+    // 4. Send positions to VS Code if they changed
+    if (hasPositionChange) {
+      const positions: Record<string, { x: number; y: number }> = {};
+      for (const n of newNodes) {
+        if (n.type !== 'groupNode') {
+          positions[n.id] = n.position;
+        }
+      }
+      getVsCodeApi().postMessage({ type: 'updatePositions', positions });
+    }
   },
 
   onEdgesChange: (changes) => {
@@ -409,7 +433,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   // ──────────────────────────────────────────────
   // Schema → Nodes + Edges
   // ──────────────────────────────────────────────
-  setSchema: (schema: DbmlSchema) => {
+  setSchema: (schema: DbmlSchema, initialPositions?: Record<string, { x: number; y: number }>) => {
     if (!schema || !schema.tables) {
        set({ nodes: [], edges: [], schema: null, groupMembership: {}, collapsedGroups: {} });
        return;
@@ -420,6 +444,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     // -- Table Nodes --
     for (const table of schema.tables) {
       const fullName = table.schema ? `${table.schema}.${table.name}` : table.name;
+      const nodeId = `table-${fullName}`;
       
       // Enrich columns with enum info
       const enrichedColumns = table.columns.map(col => {
@@ -436,10 +461,12 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         };
       });
 
+      const pos = initialPositions?.[nodeId] || { x: 0, y: 0 };
+
       nodes.push({
-        id: `table-${fullName}`,
+        id: nodeId,
         type: 'tableNode',
-        position: { x: 0, y: 0 },
+        position: pos,
         zIndex: 10,
         data: {
           name: table.name,
@@ -456,10 +483,13 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     // -- Enum Nodes --
     for (const enumDef of schema.enums) {
       const fullName = enumDef.schema ? `${enumDef.schema}.${enumDef.name}` : enumDef.name;
+      const nodeId = `enum-${fullName}`;
+      const pos = initialPositions?.[nodeId] || { x: 0, y: 0 };
+
       nodes.push({
-        id: `enum-${fullName}`,
+        id: nodeId,
         type: 'enumNode',
-        position: { x: 0, y: 0 },
+        position: pos,
         zIndex: 10,
         data: {
           name: enumDef.name,
@@ -552,8 +582,20 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       }
     }
 
-    // -- Dagre layout (tables + enums only) --
-    const layoutedNodes = applyLeftRightLayout(nodes, edges);
+    // -- Automatic layout only if no stored positions were found --
+    const hasAnyStoredPosition = initialPositions && Object.keys(initialPositions).length > 0;
+    
+    let layoutedNodes = nodes;
+    if (!hasAnyStoredPosition) {
+      layoutedNodes = applyLeftRightLayout(nodes, edges);
+      
+      // Send initial layout back to extension for future persistence
+      const positions: Record<string, { x: number; y: number }> = {};
+      for (const n of layoutedNodes) {
+        positions[n.id] = n.position;
+      }
+      getVsCodeApi().postMessage({ type: 'updatePositions', positions });
+    }
 
     // -- Build group membership & create group nodes --
     const groupMembership: Record<string, string> = {};

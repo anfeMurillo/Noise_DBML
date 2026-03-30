@@ -14,7 +14,7 @@ export class DiagramPanelProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _lastContent?: string;
 
-  constructor(private readonly _extensionUri: vscode.Uri) {}
+  constructor(private readonly _context: vscode.ExtensionContext) {}
 
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -26,7 +26,7 @@ export class DiagramPanelProvider implements vscode.WebviewViewProvider {
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [
-        vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview'),
+        vscode.Uri.joinPath(this._context.extensionUri, 'dist', 'webview'),
       ],
     };
 
@@ -52,6 +52,13 @@ export class DiagramPanelProvider implements vscode.WebviewViewProvider {
             await this._saveImage(message.dataUrl);
           }
           break;
+        case 'updatePositions':
+          if (vscode.window.activeTextEditor) {
+            const filePath = vscode.window.activeTextEditor.document.uri.fsPath;
+            const key = `positions-${filePath}`;
+            await this._context.workspaceState.update(key, message.positions);
+          }
+          break;
         case 'error':
           vscode.window.showErrorMessage(`DBML Diagram Error: ${message.text}`);
           break;
@@ -65,9 +72,17 @@ export class DiagramPanelProvider implements vscode.WebviewViewProvider {
 
     const schema = parseDbml(text);
     if (schema) {
+      const editor = vscode.window.activeTextEditor;
+      let positions = undefined;
+      if (editor) {
+        const key = `positions-${editor.document.uri.fsPath}`;
+        positions = this._context.workspaceState.get(key);
+      }
+
       this._view.webview.postMessage({
         type: 'update',
         schema,
+        positions
       });
     }
   }
@@ -80,10 +95,10 @@ export class DiagramPanelProvider implements vscode.WebviewViewProvider {
 
   private _getHtmlForWebview(webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview', 'index.js')
+      vscode.Uri.joinPath(this._context.extensionUri, 'dist', 'webview', 'index.js')
     );
     const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview', 'index.css')
+      vscode.Uri.joinPath(this._context.extensionUri, 'dist', 'webview', 'index.css')
     );
 
     const nonce = getNonce();

@@ -14,7 +14,7 @@ export default function App() {
   const handleMessage = useCallback(
     (message: any) => {
       if (message.type === 'update' && message.schema) {
-        setSchema(message.schema);
+        setSchema(message.schema, message.positions);
       }
     },
     [setSchema]
