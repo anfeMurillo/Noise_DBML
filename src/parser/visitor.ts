@@ -163,21 +163,23 @@ class DbmlAstVisitor extends BaseCstVisitor {
   }
 
   columnType(ctx: any): string {
-    if (ctx.quotedType) {
-      return ctx.quotedType[0].image.slice(1, -1);
+    const qName = this.visit(ctx.typeName[0]);
+    let type = qName.schema ? `"${qName.schema}"."${qName.name}"` : qName.name;
+    
+    // In many DBML contexts, if it's not quoted it's just the name. 
+    // To be clean, if it doesn't really have a schema, we just use the name.
+    if (!qName.schema) {
+      type = qName.name;
     }
-    if (ctx.typeName) {
-      let type = ctx.typeName[0].image;
-      if (ctx.typeParam1) {
-        type += `(${ctx.typeParam1[0].image}`;
-        if (ctx.typeParam2) {
-          type += `,${ctx.typeParam2[0].image}`;
-        }
-        type += ')';
+
+    if (ctx.typeParam1) {
+      type += `(${ctx.typeParam1[0].image}`;
+      if (ctx.typeParam2) {
+        type += `,${ctx.typeParam2[0].image}`;
       }
-      return type;
+      type += ')';
     }
-    return '';
+    return type;
   }
 
   // ---- Settings ----
@@ -329,8 +331,7 @@ class DbmlAstVisitor extends BaseCstVisitor {
   // ---- Note ----
   noteDef(ctx: any): string {
     if (ctx.stringValue) {
-      const val = this.visit(ctx.stringValue[0]);
-      return this.extractString(val);
+      return ctx.stringValue.map((sv: CstNode) => this.extractString(this.visit(sv))).join(' ');
     }
     return '';
   }
@@ -424,20 +425,20 @@ class DbmlAstVisitor extends BaseCstVisitor {
 
   refEndpoint(ctx: any): RefEndpoint {
     const parts: string[] = [];
-    if (ctx.part1) parts.push(ctx.part1[0].image);
-    if (ctx.part2) parts.push(ctx.part2[0].image);
-    if (ctx.part3) parts.push(ctx.part3[0].image);
+    if (ctx.part1) parts.push(this.visit(ctx.part1[0]));
+    if (ctx.part2) parts.push(this.visit(ctx.part2[0]));
+    if (ctx.part3) parts.push(this.visit(ctx.part3[0]));
 
     // Handle composite columns
     const compositeCols: string[] = [];
     if (ctx.compositeCol) {
       for (const col of ctx.compositeCol) {
-        compositeCols.push(col.image);
+        compositeCols.push(this.visit(col));
       }
     }
     if (ctx.compositeCol2) {
       for (const col of ctx.compositeCol2) {
-        compositeCols.push(col.image);
+        compositeCols.push(this.visit(col));
       }
     }
 
@@ -455,6 +456,12 @@ class DbmlAstVisitor extends BaseCstVisitor {
       return { table: parts[0], columns: [parts[1]] };
     }
     return { table: parts[0] || '', columns: [] };
+  }
+
+  refPart(ctx: any): string {
+    if (ctx.Identifier) return ctx.Identifier[0].image;
+    if (ctx.DoubleQuoteString) return ctx.DoubleQuoteString[0].image.slice(1, -1);
+    return '';
   }
 
   relationOp(ctx: any): RelationType {
@@ -542,6 +549,9 @@ class DbmlAstVisitor extends BaseCstVisitor {
     if (ctx.SingleQuoteString) {
       return ctx.SingleQuoteString[0].image;
     }
+    if (ctx.DoubleQuoteString) {
+      return ctx.DoubleQuoteString[0].image;
+    }
     return '';
   }
 
@@ -552,6 +562,9 @@ class DbmlAstVisitor extends BaseCstVisitor {
       return raw.slice(3, -3).trim();
     }
     if (raw.startsWith("'") && raw.endsWith("'")) {
+      return raw.slice(1, -1);
+    }
+    if (raw.startsWith('"') && raw.endsWith('"')) {
       return raw.slice(1, -1);
     }
     return raw;

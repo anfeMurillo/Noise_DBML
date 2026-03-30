@@ -130,21 +130,16 @@ export class DbmlParser extends CstParser {
   });
 
   private columnType = this.RULE('columnType', () => {
-    this.OR([
-      { ALT: () => {
-        this.CONSUME(Identifier, { LABEL: 'typeName' });
-        this.OPTION(() => {
-          this.CONSUME(LParen);
-          this.CONSUME(NumberLiteral, { LABEL: 'typeParam1' });
-          this.OPTION2(() => {
-            this.CONSUME(Comma);
-            this.CONSUME2(NumberLiteral, { LABEL: 'typeParam2' });
-          });
-          this.CONSUME(RParen);
-        });
-      }},
-      { ALT: () => this.CONSUME(DoubleQuoteString, { LABEL: 'quotedType' }) },
-    ]);
+    this.SUBRULE(this.qualifiedName, { LABEL: 'typeName' });
+    this.OPTION(() => {
+      this.CONSUME(LParen);
+      this.CONSUME(NumberLiteral, { LABEL: 'typeParam1' });
+      this.OPTION2(() => {
+        this.CONSUME(Comma);
+        this.CONSUME2(NumberLiteral, { LABEL: 'typeParam2' });
+      });
+      this.CONSUME(RParen);
+    });
   });
 
   // ---- Settings Block [ ... ] ----
@@ -323,7 +318,9 @@ export class DbmlParser extends CstParser {
       }},
       { ALT: () => {
         this.CONSUME(LCurly);
-        this.SUBRULE2(this.stringValue);
+        this.MANY(() => {
+          this.SUBRULE2(this.stringValue);
+        });
         this.CONSUME(RCurly);
       }},
     ]);
@@ -403,19 +400,19 @@ export class DbmlParser extends CstParser {
 
   private refEndpoint = this.RULE('refEndpoint', () => {
     // Can be: table.col or schema.table.col or table.(col1, col2) or schema.table.(col1, col2)
-    this.CONSUME(Identifier, { LABEL: 'part1' });
+    this.SUBRULE(this.refPart, { LABEL: 'part1' });
     this.CONSUME(Dot);
     this.OR([
       { ALT: () => {
         this.CONSUME(LParen);
         this.AT_LEAST_ONE_SEP({
           SEP: Comma,
-          DEF: () => this.CONSUME2(Identifier, { LABEL: 'compositeCol' }),
+          DEF: () => this.SUBRULE2(this.refPart, { LABEL: 'compositeCol' }),
         });
         this.CONSUME(RParen);
       }},
       { ALT: () => {
-        this.CONSUME3(Identifier, { LABEL: 'part2' });
+        this.SUBRULE3(this.refPart, { LABEL: 'part2' });
         this.OPTION(() => {
           this.CONSUME2(Dot);
           this.OR2([
@@ -423,14 +420,21 @@ export class DbmlParser extends CstParser {
               this.CONSUME2(LParen);
               this.AT_LEAST_ONE_SEP2({
                 SEP: Comma,
-                DEF: () => this.CONSUME4(Identifier, { LABEL: 'compositeCol2' }),
+                DEF: () => this.SUBRULE4(this.refPart, { LABEL: 'compositeCol2' }),
               });
               this.CONSUME2(RParen);
             }},
-            { ALT: () => this.CONSUME5(Identifier, { LABEL: 'part3' }) },
+            { ALT: () => this.SUBRULE5(this.refPart, { LABEL: 'part3' }) },
           ]);
         });
       }},
+    ]);
+  });
+
+  private refPart = this.RULE('refPart', () => {
+    this.OR([
+      { ALT: () => this.CONSUME(Identifier) },
+      { ALT: () => this.CONSUME(DoubleQuoteString) },
     ]);
   });
 
@@ -549,6 +553,7 @@ export class DbmlParser extends CstParser {
     this.OR([
       { ALT: () => this.CONSUME(TripleQuoteString) },
       { ALT: () => this.CONSUME(SingleQuoteString) },
+      { ALT: () => this.CONSUME(DoubleQuoteString) },
     ]);
   });
 }

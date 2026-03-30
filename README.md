@@ -33,48 +33,57 @@ The extension extensively supports the DBML specification:
 
 ## Ideal Syntax Example
 
-The following example consolidates all syntax elements that the Noise DBML extension processes and renders.
+The following example consolidates the syntax elements that the Noise DBML extension processes and renders, showcasing its robustness and variety of features.
 
 ```dbml
 // ==========================================
-// 1. ENUMERATIONS (Standardized Data Types)
+// 1. PROJECT CONFIGURATION
+// ==========================================
+
+Project "Noise E-commerce" {
+  database_type: 'PostgreSQL'
+  Note: 'Schema for a modern e-commerce system'
+}
+
+// ==========================================
+// 2. ENUMERATIONS
 // ==========================================
 
 Enum "public"."user_status" {
-  active
+  active [note: 'Active account']
   inactive
   banned
-  deleted [note: 'Status for logically deleted users']
+  deleted
 }
 
 // ==========================================
-// 2. TABLE GROUPING (Visualization)
+// 3. TABLE GROUPING (Visual Categories)
 // ==========================================
 
-TableGroup CoreSystem {
+TableGroup "Identity & Access" {
   users
   profiles
-  sessions
+  "auth_logs"
 }
 
-TableGroup "Inventory Management" {
+TableGroup "Inventory & Sales" {
   products
   categories
-  "order_items"
+  order_items
 }
 
 // ==========================================
-// 3. TABLE DEFINITIONS
+// 4. TABLE DEFINITIONS
 // ==========================================
 
 Table users as U [headercolor: #3498db] {
   id uuid [primary key, default: `uuid_generate_v4()`]
   username varchar(50) [not null, unique]
-  email varchar(255) [not null, unique, note: 'Unique email address']
+  email varchar(255) [not null, unique]
   status "public"."user_status" [default: 'active']
   created_at timestamp [default: `now()`]
   
-  Note: 'Contains user authentication information'
+  Note: 'Core user credentials and account status'
 
   indexes {
     username [name: "idx_users_username"]
@@ -85,20 +94,20 @@ Table users as U [headercolor: #3498db] {
 
 Table profiles [headercolor: #2980b9] {
   user_id uuid [pk, ref: - U.id]
-  full_name varchar(100)
+  full_name "varchar"
   bio text
-  avatar_url varchar [note: 'Profile image URL']
+  avatar_url varchar [note: 'URL to S3 bucket']
   
   Note {
-    'Complementary user information.'
-    'Supports multiple lines.'
+    'Detailed user information.'
+    'Stored separately for performance.'
   }
 }
 
 Table "public"."categories" [headercolor: #27ae60] {
   id int [pk, increment]
   name varchar [not null]
-  parent_id int [note: 'Recursive relationship for subcategories']
+  parent_id int [note: 'Hierarchical categories']
 }
 
 Table products [headercolor: #2ecc71] {
@@ -110,8 +119,15 @@ Table products [headercolor: #2ecc71] {
 
   indexes {
     (category_id, price)
-    "lower(name)" [type: btree] // Expression-based index
+    `lower(name)` [type: btree] // Expression-based index
   }
+}
+
+Table "auth_logs" {
+  id bigint [pk, increment]
+  user_id uuid
+  action varchar
+  occurred_at timestamp
 }
 
 Table order_items {
@@ -125,24 +141,20 @@ Table order_items {
 }
 
 // ==========================================
-// 4. RELATIONSHIPS (Foreign Keys)
+// 5. RELATIONSHIPS (External References)
 // ==========================================
 
-// Many-to-One relationship (N:1) with configuration
+// Product belongs to a category (N:1)
 Ref: products.category_id > "public"."categories".id [delete: cascade, update: no action]
 
-// Recursive relationship (1:N)
+// Recursive relationship for category parents
 Ref: "public"."categories".parent_id > "public"."categories".id
 
-// One-to-Many relationship (1:N)
+// Items link to products
 Ref: order_items.product_id > products.id
 
-// Block comment for relationships block
-/*
-   Connects items with main orders
-   Supported via external commands in DBML
-*/
-Ref: order_items.order_id > "sales"."orders".id
+// Linking logs to users
+Ref: "auth_logs".user_id > users.id
 ```
 
 ## Extension Usage
