@@ -120,11 +120,20 @@ function getNodeHeight(node: Node, detailLevel: DetailLevel = 'all-fields'): num
 }
 
 // ---- Bounding-box helpers ----
-function calcBoundingBox(nodes: Node[], detailLevel?: DetailLevel): { x: number; y: number; width: number; height: number } {
+function calcBoundingBox(nodes: Node[], detailLevel: DetailLevel = 'all-fields'): { x: number; y: number; width: number; height: number } {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of nodes) {
-    const w = (n.measured?.width) ?? NODE_WIDTH;
-    const h = (n.measured?.height) ?? getNodeHeight(n, detailLevel);
+    let w: number;
+    let h: number;
+
+    if (n.type === 'tableNode') {
+      w = detailLevel === 'table-names' ? 160 : NODE_WIDTH;
+      h = getNodeHeight(n, detailLevel);
+    } else {
+      w = n.measured?.width ?? NODE_WIDTH;
+      h = n.measured?.height ?? getNodeHeight(n, detailLevel);
+    }
+
     minX = Math.min(minX, n.position.x);
     minY = Math.min(minY, n.position.y);
     maxX = Math.max(maxX, n.position.x + w);
@@ -137,6 +146,7 @@ function recalcGroupBounds(
   nodes: Node[],
   groupId: string,
   membership: Record<string, string>,
+  detailLevel: DetailLevel = 'all-fields'
 ): Node[] {
   const memberIds = Object.entries(membership)
     .filter(([, gId]) => gId === groupId)
@@ -145,7 +155,7 @@ function recalcGroupBounds(
   const memberNodes = nodes.filter((n) => memberIds.includes(n.id) && !n.hidden);
   if (memberNodes.length === 0) return nodes;
 
-  const bounds = calcBoundingBox(memberNodes);
+  const bounds = calcBoundingBox(memberNodes, detailLevel);
 
   return nodes.map((n) => {
     if (n.id !== groupId) return n;
@@ -373,7 +383,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     newNodes = [...existingGroups, ...newNodes];
 
     for (const gId of groupIds) {
-      newNodes = recalcGroupBounds(newNodes, gId, groupMembership);
+      newNodes = recalcGroupBounds(newNodes, gId, groupMembership, detailLevel);
     }
 
     set({ nodes: newNodes });
@@ -449,7 +459,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     }
 
     for (const gId of groupsToRecalc) {
-      newNodes = recalcGroupBounds(newNodes, gId, groupMembership);
+      newNodes = recalcGroupBounds(newNodes, gId, groupMembership, state.detailLevel);
     }
 
     set({ nodes: newNodes });
@@ -774,7 +784,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
 
     // If expanding, recalculate bounding box
     if (!willCollapse) {
-      newNodes = recalcGroupBounds(newNodes, groupId, state.groupMembership);
+      newNodes = recalcGroupBounds(newNodes, groupId, state.groupMembership, state.detailLevel);
     }
 
     set({ nodes: newNodes, edges: newEdges, collapsedGroups: newCollapsed });
@@ -870,6 +880,19 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   setDetailLevel: (level: DetailLevel) => {
+    const { nodes, groupMembership } = get();
+    
+    // 1. Update level first
     set({ detailLevel: level });
+    
+    // 2. Identify all groups (even non-collapsed ones) and recalc bounds
+    const groupIds = nodes.filter(n => n.type === 'groupNode').map(n => n.id);
+    let newNodes = [...nodes];
+    
+    for (const gId of groupIds) {
+      newNodes = recalcGroupBounds(newNodes, gId, groupMembership, level);
+    }
+    
+    set({ nodes: newNodes });
   },
 }));
