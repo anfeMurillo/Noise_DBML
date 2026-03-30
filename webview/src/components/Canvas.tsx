@@ -13,10 +13,12 @@ import {
 import { useDiagramStore } from '../store/useStore';
 import TableNode from './TableNode';
 import EnumNode from './EnumNode';
+import TableGroupNode from './TableGroupNode';
 
 const nodeTypes = {
   tableNode: TableNode,
   enumNode: EnumNode,
+  groupNode: TableGroupNode,
 };
 
 export default function Canvas() {

@@ -243,6 +243,128 @@ html, body, #root {
   flex-shrink: 0;
 }
 
+/* ---- Table Group Node ---- */
+.group-node {
+  width: 100%;
+  height: 100%;
+  background: var(--group-bg);
+  border: 2px dashed var(--group-border);
+  border-radius: 12px;
+  overflow: visible;
+  pointer-events: none;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.group-node:hover {
+  border-color: var(--group-color);
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.15);
+}
+
+.group-node__header {
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--group-header-bg);
+  border-bottom: 1px solid var(--group-header-border);
+  border-radius: 10px 10px 0 0;
+  cursor: grab;
+  user-select: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background 0.2s ease;
+}
+
+.group-node__header:active {
+  cursor: grabbing;
+}
+
+.group-node__header:hover {
+  background: var(--group-border);
+}
+
+.group-node__header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.group-node__icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.group-node__name {
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--node-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-node__count {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--group-color);
+  color: #fff;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.group-node__collapse-btn {
+  pointer-events: all;
+  background: transparent;
+  border: 1px solid var(--group-border);
+  color: var(--node-fg);
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.group-node__collapse-btn:hover {
+  background: var(--group-border);
+  border-color: var(--group-color);
+}
+
+.group-node__body {
+  flex: 1;
+  min-height: 20px;
+  pointer-events: none;
+}
+
+/* ---- Collapsed state ---- */
+.group-node--collapsed {
+  border-style: solid;
+  border-radius: 8px;
+  pointer-events: all;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.group-node--collapsed .group-node__header {
+  border-radius: 8px 8px 0 0;
+}
+
+.group-node__collapsed-info {
+  padding: 6px 14px 10px;
+  font-size: 11px;
+  opacity: 0.5;
+  letter-spacing: 0.3px;
+}
+
 /* ---- Empty State ---- */
 .empty-state {
   width: 100%;
