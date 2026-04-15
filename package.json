@@ -1,6 +1,6 @@
 {
-  "name": "noise-dbml",
-  "displayName": "Noise DBML",
+  "name": "noise-dbml-tools",
+  "displayName": "NOISE DBML Tools",
   "description": "Syntax highlighting, code snippets, and interactive ER diagrams for DBML (Database Markup Language) files.",
   "version": "1.0.0",
   "publisher": "AndrsFelipeMurillo",
