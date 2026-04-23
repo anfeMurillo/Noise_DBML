@@ -130,16 +130,28 @@ export class DbmlParser extends CstParser {
   });
 
   private columnType = this.RULE('columnType', () => {
-    this.SUBRULE(this.qualifiedName, { LABEL: 'typeName' });
+    this.OR([
+      { ALT: () => this.SUBRULE(this.qualifiedName, { LABEL: 'typeName' }) },
+      // Inline enum types:  enum('a','b',...)
+      { ALT: () => this.CONSUME(Enum, { LABEL: 'enumKeyword' }) },
+    ]);
     this.OPTION(() => {
       this.CONSUME(LParen);
-      this.CONSUME(NumberLiteral, { LABEL: 'typeParam1' });
-      this.OPTION2(() => {
-        this.CONSUME(Comma);
-        this.CONSUME2(NumberLiteral, { LABEL: 'typeParam2' });
+      this.AT_LEAST_ONE_SEP({
+        SEP: Comma,
+        DEF: () => this.SUBRULE(this.typeParam),
       });
       this.CONSUME(RParen);
     });
+  });
+
+  private typeParam = this.RULE('typeParam', () => {
+    this.OR([
+      { ALT: () => this.CONSUME(NumberLiteral) },
+      { ALT: () => this.CONSUME(SingleQuoteString) },
+      { ALT: () => this.CONSUME(DoubleQuoteString) },
+      { ALT: () => this.CONSUME(Identifier) },
+    ]);
   });
 
   // ---- Settings Block [ ... ] ----

@@ -2,12 +2,16 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getSmoothStepPath,
+  useStore,
   type EdgeProps,
 } from '@xyflow/react';
+import { useDiagramStore } from '../store/useStore';
 
 export default function DbmlEdge(props: EdgeProps) {
   const {
     id,
+    source,
+    target,
     sourceX,
     sourceY,
     targetX,
@@ -20,7 +24,23 @@ export default function DbmlEdge(props: EdgeProps) {
     data,
   } = props;
 
-  const edgeColor = (data?.color as string) || 'var(--edge-color)';
+  // Highlight this edge when either of its endpoints is hovered or selected.
+  const hoveredNodeId = useDiagramStore((s) => s.hoveredNodeId);
+  const isConnectedNodeSelected = useStore((s) => {
+    const src = s.nodeLookup.get(source);
+    const tgt = s.nodeLookup.get(target);
+    return !!(src?.selected || tgt?.selected);
+  });
+
+  const isConnectedNodeHovered =
+    hoveredNodeId !== null && (source === hoveredNodeId || target === hoveredNodeId);
+
+  const highlighted = isConnectedNodeHovered || isConnectedNodeSelected;
+
+  // Colors: gray by default, blue when the connected table is hovered/selected.
+  const highlightColor = (data?.color as string) || 'var(--edge-color)';
+  const inactiveColor = 'var(--edge-color-inactive)';
+  const edgeColor = highlighted ? highlightColor : inactiveColor;
 
   const [path, labelX, labelY] = getSmoothStepPath({
     sourceX,
@@ -41,7 +61,8 @@ export default function DbmlEdge(props: EdgeProps) {
         style={{
           ...style,
           stroke: edgeColor,
-          strokeWidth: 2,
+          strokeWidth: highlighted ? 2.25 : 1.75,
+          transition: 'stroke 0.15s ease, stroke-width 0.15s ease',
         }}
       />
       {label && (

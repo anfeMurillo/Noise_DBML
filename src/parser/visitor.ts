@@ -163,23 +163,28 @@ class DbmlAstVisitor extends BaseCstVisitor {
   }
 
   columnType(ctx: any): string {
-    const qName = this.visit(ctx.typeName[0]);
-    let type = qName.schema ? `"${qName.schema}"."${qName.name}"` : qName.name;
-    
-    // In many DBML contexts, if it's not quoted it's just the name. 
-    // To be clean, if it doesn't really have a schema, we just use the name.
-    if (!qName.schema) {
-      type = qName.name;
+    let type: string;
+    if (ctx.enumKeyword) {
+      // Inline enum syntax:  enum('a','b',...)  → normalize to lowercase "enum"
+      type = ctx.enumKeyword[0].image.toLowerCase();
+    } else {
+      const qName = this.visit(ctx.typeName[0]);
+      type = qName.schema ? `${qName.schema}.${qName.name}` : qName.name;
     }
 
-    if (ctx.typeParam1) {
-      type += `(${ctx.typeParam1[0].image}`;
-      if (ctx.typeParam2) {
-        type += `,${ctx.typeParam2[0].image}`;
-      }
-      type += ')';
+    if (ctx.typeParam) {
+      const params = ctx.typeParam.map((p: CstNode) => this.visit(p));
+      type += `(${params.join(',')})`;
     }
     return type;
+  }
+
+  typeParam(ctx: any): string {
+    if (ctx.NumberLiteral) return ctx.NumberLiteral[0].image;
+    if (ctx.SingleQuoteString) return ctx.SingleQuoteString[0].image;
+    if (ctx.DoubleQuoteString) return ctx.DoubleQuoteString[0].image;
+    if (ctx.Identifier) return ctx.Identifier[0].image;
+    return '';
   }
 
   // ---- Settings ----

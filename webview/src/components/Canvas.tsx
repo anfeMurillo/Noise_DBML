@@ -30,7 +30,7 @@ const edgeTypes = {
 };
 
 export default function Canvas() {
-  const { nodes, edges, onNodesChange, onEdgesChange } = useDiagramStore();
+  const { nodes, edges, onNodesChange, onEdgesChange, setHoveredNodeId } = useDiagramStore();
 
   if (nodes.length === 0) {
     return (
@@ -50,6 +50,8 @@ export default function Canvas() {
       edges={edges}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
+      onNodeMouseEnter={(_e, node) => setHoveredNodeId(node.id)}
+      onNodeMouseLeave={() => setHoveredNodeId(null)}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       fitView
