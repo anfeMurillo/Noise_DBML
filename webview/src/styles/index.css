@@ -16,6 +16,7 @@
   --node-hover: var(--vscode-list-hoverBackground, #2a2d2e);
   --canvas-bg: var(--vscode-sideBar-background, #252526);
   --edge-color: var(--vscode-focusBorder, #007acc);
+  --edge-color-inactive: var(--vscode-descriptionForeground, #6b7280);
   --pk-color: #f0c040;
   --fk-color: #56b6c2;
   --unique-color: #c678dd;
@@ -76,8 +77,8 @@ html, body, #root {
 }
 
 .react-flow__edge-path {
-  stroke: var(--edge-color) !important;
-  stroke-width: 1.5;
+  stroke: var(--edge-color-inactive);
+  stroke-width: 1.75;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {

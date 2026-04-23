@@ -320,18 +320,20 @@ interface DiagramState {
   groupMembership: Record<string, string>;   // tableNodeId → groupNodeId
   collapsedGroups: Record<string, boolean>;   // groupNodeId → true
   detailLevel: DetailLevel;
+  hoveredNodeId: string | null;              // Currently hovered node (for edge highlight)
 
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   setSchema: (
-    schema: DbmlSchema, 
+    schema: DbmlSchema,
     initialPositions?: Record<string, { x: number; y: number }>,
     initialStickyNotes?: { id: string; x: number; y: number; text: string; width?: number; height?: number }[]
   ) => void;
   toggleGroupCollapse: (groupId: string) => void;
   adjustLayout: (algorithm?: 'left-right' | 'snowflake' | 'compact') => void;
   setDetailLevel: (level: DetailLevel) => void;
-  
+  setHoveredNodeId: (id: string | null) => void;
+
   // -- Sticky Note Actions --
   addStickyNote: (position: { x: number; y: number }) => void;
   updateStickyNote: (id: string, data: Partial<{ text: string; x: number; y: number; width?: number; height?: number }>) => void;
@@ -347,6 +349,9 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   groupMembership: {},
   collapsedGroups: {},
   detailLevel: 'all-fields',
+  hoveredNodeId: null,
+
+  setHoveredNodeId: (id: string | null) => set({ hoveredNodeId: id }),
 
   // ──────────────────────────────────────────────
   // Manual Layout Trigger
