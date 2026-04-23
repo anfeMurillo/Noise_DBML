@@ -611,7 +611,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         label: getEdgeLabel(ref.type),
         type: 'dbmlEdge',
         animated: false,
-        zIndex: 20,
+        zIndex: 5,
         data: {
           isSelf,
           color: ref.settings?.color || 'var(--edge-color)',
@@ -659,7 +659,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
             label: getEdgeLabel(col.settings.ref.type),
             type: 'dbmlEdge',
             animated: false,
-            zIndex: 20,
+            zIndex: 5,
             data: {
               isSelf,
               color: 'var(--edge-color)',
