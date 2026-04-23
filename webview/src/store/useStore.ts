@@ -73,6 +73,7 @@ interface TableGroupDef {
 
 // ---- Layout Constants ----
 const NODE_WIDTH = 260;
+const COMPACT_NODE_WIDTH = 160; // used when detailLevel === 'table-names'
 const TABLE_ROW_HEIGHT = 28;
 const TABLE_HEADER_HEIGHT = 36;
 const ENUM_ROW_HEIGHT = 28;
@@ -83,6 +84,16 @@ const INDEX_ROW_HEIGHT = 20;
 const FOOTER_NOTE_HEIGHT = 42;
 const COLLAPSED_WIDTH = 220;
 const COLLAPSED_HEIGHT = 64;
+
+function getNodeWidth(node: Node, detailLevel: DetailLevel = 'all-fields'): number {
+  if (node.type === 'tableNode') {
+    return detailLevel === 'table-names' ? COMPACT_NODE_WIDTH : NODE_WIDTH;
+  }
+  if (node.type === 'stickyNoteNode') {
+    return (node as any).style?.width || 200;
+  }
+  return node.measured?.width ?? NODE_WIDTH;
+}
 
 function getNodeHeight(node: Node, detailLevel: DetailLevel = 'all-fields'): number {
   const type = node.type || 'tableNode';
@@ -123,16 +134,10 @@ function getNodeHeight(node: Node, detailLevel: DetailLevel = 'all-fields'): num
 function calcBoundingBox(nodes: Node[], detailLevel: DetailLevel = 'all-fields'): { x: number; y: number; width: number; height: number } {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of nodes) {
-    let w: number;
-    let h: number;
-
-    if (n.type === 'tableNode') {
-      w = detailLevel === 'table-names' ? 160 : NODE_WIDTH;
-      h = getNodeHeight(n, detailLevel);
-    } else {
-      w = n.measured?.width ?? NODE_WIDTH;
-      h = n.measured?.height ?? getNodeHeight(n, detailLevel);
-    }
+    const w = getNodeWidth(n, detailLevel);
+    const h = n.type === 'tableNode' || n.type === 'enumNode'
+      ? getNodeHeight(n, detailLevel)
+      : (n.measured?.height ?? getNodeHeight(n, detailLevel));
 
     minX = Math.min(minX, n.position.x);
     minY = Math.min(minY, n.position.y);
@@ -174,38 +179,90 @@ function recalcGroupBounds(
   });
 }
 
-// ---- Dagre Layout ----
 // ---- Dagre Layout (Left-to-Right) ----
 function applyLeftRightLayout(nodes: Node[], edges: Edge[], detailLevel?: DetailLevel): Node[] {
-  const g = new dagre.graphlib.Graph();
+  if (nodes.length === 0) return nodes;
+
+  const compactDetail = detailLevel === 'table-names';
+  const g = new dagre.graphlib.Graph({ compound: false });
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
     rankdir: 'LR',
-    nodesep: 80,
-    ranksep: 120,
-    edgesep: 40,
-    marginx: 50,
-    marginy: 50,
+    align: 'UL',
+    nodesep: compactDetail ? 35 : 60,
+    ranksep: compactDetail ? 120 : 180,
+    edgesep: compactDetail ? 15 : 30,
+    marginx: 40,
+    marginy: 40,
+    ranker: 'network-simplex',
   });
 
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const connected = new Set<string>();
+
   for (const node of nodes) {
+    const width = getNodeWidth(node, detailLevel);
     const height = getNodeHeight(node, detailLevel);
-    g.setNode(node.id, { width: NODE_WIDTH, height });
+    g.setNode(node.id, { width, height });
   }
 
   for (const edge of edges) {
-    g.setEdge(edge.source, edge.target);
+    if (nodeIds.has(edge.source) && nodeIds.has(edge.target) && edge.source !== edge.target) {
+      g.setEdge(edge.source, edge.target);
+      connected.add(edge.source);
+      connected.add(edge.target);
+    }
   }
 
   dagre.layout(g);
 
+  // Collect orphan nodes (no edges) — dagre still positions them but often stacks them awkwardly.
+  // We'll place them to the right of the main graph in a neat column.
+  const connectedNodes = nodes.filter((n) => connected.has(n.id));
+  let rightmost = -Infinity;
+  let topmost = Infinity;
+  for (const n of connectedNodes) {
+    const pos = g.node(n.id);
+    if (!pos) continue;
+    const w = getNodeWidth(n, detailLevel);
+    rightmost = Math.max(rightmost, pos.x - w / 2 + w);
+    topmost = Math.min(topmost, pos.y - (pos.height || 0) / 2);
+  }
+  if (!isFinite(rightmost)) rightmost = 0;
+  if (!isFinite(topmost)) topmost = 0;
+
+  const ORPHAN_GAP = compactDetail ? 80 : 120;
+  const ORPHAN_ROW_GAP = 40;
+  const orphanCursor = { x: rightmost + ORPHAN_GAP, y: topmost };
+
+  // Sort orphans alphabetically for stability
+  const orphans = nodes
+    .filter((n) => !connected.has(n.id))
+    .sort((a, b) => {
+      const nameA = (a.data as any)?.name || a.id;
+      const nameB = (b.data as any)?.name || b.id;
+      return String(nameA).localeCompare(String(nameB));
+    });
+
+  const orphanPositions = new Map<string, { x: number; y: number }>();
+  let y = orphanCursor.y;
+  for (const n of orphans) {
+    orphanPositions.set(n.id, { x: orphanCursor.x, y });
+    y += getNodeHeight(n, detailLevel) + ORPHAN_ROW_GAP;
+  }
+
   return nodes.map((node) => {
+    const orphanPos = orphanPositions.get(node.id);
+    if (orphanPos) {
+      return { ...node, position: orphanPos };
+    }
     const pos = g.node(node.id);
     if (pos) {
+      const w = getNodeWidth(node, detailLevel);
       return {
         ...node,
         position: {
-          x: pos.x - NODE_WIDTH / 2,
+          x: pos.x - w / 2,
           y: pos.y - (pos.height || 0) / 2,
         },
       };
@@ -214,75 +271,206 @@ function applyLeftRightLayout(nodes: Node[], edges: Edge[], detailLevel?: Detail
   });
 }
 
-// ---- Snowflake Layout (Central Hubs) ----
+// ---- Snowflake Layout (Concentric BFS rings around the hub) ----
 function applySnowflakeLayout(nodes: Node[], edges: Edge[], detailLevel?: DetailLevel): Node[] {
   if (nodes.length === 0) return nodes;
 
-  // 1. Calculate connectivity degree for each node
-  const degreeMap: Record<string, number> = {};
-  nodes.forEach(n => degreeMap[n.id] = 0);
-  edges.forEach(e => {
-    if (degreeMap[e.source] !== undefined) degreeMap[e.source]++;
-    if (degreeMap[e.target] !== undefined) degreeMap[e.target]++;
-  });
+  // Build undirected adjacency (self-loops ignored)
+  const adjacency = new Map<string, Set<string>>();
+  for (const n of nodes) adjacency.set(n.id, new Set());
+  for (const e of edges) {
+    if (e.source === e.target) continue;
+    if (adjacency.has(e.source) && adjacency.has(e.target)) {
+      adjacency.get(e.source)!.add(e.target);
+      adjacency.get(e.target)!.add(e.source);
+    }
+  }
 
-  // 2. Sort nodes by connectivity (descending)
-  const sortedNodes = [...nodes].sort((a, b) => (degreeMap[b.id] || 0) - (degreeMap[a.id] || 0));
+  // Split into connected components
+  const visited = new Set<string>();
+  const components: string[][] = [];
+  for (const n of nodes) {
+    if (visited.has(n.id)) continue;
+    const comp: string[] = [];
+    const queue = [n.id];
+    visited.add(n.id);
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      comp.push(id);
+      for (const nb of adjacency.get(id) || []) {
+        if (!visited.has(nb)) {
+          visited.add(nb);
+          queue.push(nb);
+        }
+      }
+    }
+    components.push(comp);
+  }
+  // Largest component first
+  components.sort((a, b) => b.length - a.length);
 
-  // 3. Place nodes in a spiral/radial pattern
-  const centerX = 500;
-  const centerY = 500;
-  
-  return nodes.map((node) => {
-    const index = sortedNodes.findIndex(n => n.id === node.id);
-    if (index === 0) {
-      // Re-center first node
-      return { ...node, position: { x: centerX, y: centerY } };
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const compact = detailLevel === 'table-names';
+  const ringStep = compact ? 280 : 440;
+  const minArcSpacing = compact ? 200 : 340;
+  const componentGap = compact ? 200 : 300;
+
+  interface LocalLayout {
+    positions: Map<string, { x: number; y: number }>;
+    minX: number; minY: number; maxX: number; maxY: number;
+  }
+  const layouts: LocalLayout[] = [];
+
+  for (const comp of components) {
+    const compSet = new Set(comp);
+
+    // Hub = node with the highest degree in this component (tie-broken by name for stability)
+    const hub = comp.reduce((best, id) => {
+      const dBest = adjacency.get(best)?.size || 0;
+      const dId = adjacency.get(id)?.size || 0;
+      if (dId !== dBest) return dId > dBest ? id : best;
+      const nameBest = (nodeMap.get(best)?.data as any)?.name || best;
+      const nameId = (nodeMap.get(id)?.data as any)?.name || id;
+      return String(nameId).localeCompare(String(nameBest)) < 0 ? id : best;
+    }, comp[0]);
+
+    // BFS from the hub → list of rings
+    const rings: string[][] = [];
+    const seen = new Set<string>([hub]);
+    let cur = [hub];
+    while (cur.length > 0) {
+      rings.push(cur);
+      const next: string[] = [];
+      for (const id of cur) {
+        for (const nb of adjacency.get(id) || []) {
+          if (compSet.has(nb) && !seen.has(nb)) {
+            seen.add(nb);
+            next.push(nb);
+          }
+        }
+      }
+      // Sort by degree descending so hubs sit closer together within a ring
+      next.sort((a, b) => (adjacency.get(b)?.size || 0) - (adjacency.get(a)?.size || 0));
+      cur = next;
     }
 
-    // Radial layout: items are placed in expanding layers
-    // Radius increases with index, angle increments
-    const layer = Math.floor(Math.sqrt(index));
-    const angle = (index * 137.5) * (Math.PI / 180); // Golden angle
-    const radius = layer * 450;
-
-    return {
-      ...node,
-      position: {
-        x: centerX + radius * Math.cos(angle) - NODE_WIDTH / 2,
-        y: centerY + radius * Math.sin(angle) - (getNodeHeight(node, detailLevel) / 2),
-      },
+    const positions = new Map<string, { x: number; y: number }>();
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const record = (id: string, x: number, y: number) => {
+      const n = nodeMap.get(id)!;
+      const w = getNodeWidth(n, detailLevel);
+      const h = getNodeHeight(n, detailLevel);
+      positions.set(id, { x: x - w / 2, y: y - h / 2 });
+      minX = Math.min(minX, x - w / 2);
+      minY = Math.min(minY, y - h / 2);
+      maxX = Math.max(maxX, x + w / 2);
+      maxY = Math.max(maxY, y + h / 2);
     };
+
+    // Ring 0: hub at origin
+    record(hub, 0, 0);
+
+    for (let r = 1; r < rings.length; r++) {
+      const ring = rings[r];
+      // Radius needs to fit every ring-r node along its circumference without overlap
+      const circumferenceRadius = (ring.length * minArcSpacing) / (2 * Math.PI);
+      const radius = Math.max(r * ringStep, circumferenceRadius);
+
+      // Start angle rotates a little per ring to avoid radial alignment
+      const offset = (r % 2 === 0 ? 0 : Math.PI / ring.length) - Math.PI / 2;
+      for (let i = 0; i < ring.length; i++) {
+        const angle = offset + (i / ring.length) * 2 * Math.PI;
+        record(ring[i], radius * Math.cos(angle), radius * Math.sin(angle));
+      }
+    }
+
+    layouts.push({ positions, minX, minY, maxX, maxY });
+  }
+
+  // Arrange components horizontally, top-aligned
+  const positionMap = new Map<string, { x: number; y: number }>();
+  let cursorX = 0;
+  for (const layout of layouts) {
+    const dx = cursorX - layout.minX;
+    const dy = -layout.minY; // top-align at y = 0
+    for (const [id, pos] of layout.positions) {
+      positionMap.set(id, { x: pos.x + dx, y: pos.y + dy });
+    }
+    cursorX += (layout.maxX - layout.minX) + componentGap;
+  }
+
+  return nodes.map((node) => {
+    const pos = positionMap.get(node.id);
+    return pos ? { ...node, position: pos } : node;
   });
 }
 
-// ---- Compact Layout (Grid Rectangle) ----
-function applyCompactLayout(nodes: Node[]): Node[] {
+// ---- Compact Layout (Row-packed grid with variable cell sizes) ----
+function applyCompactLayout(nodes: Node[], detailLevel?: DetailLevel): Node[] {
   if (nodes.length === 0) return nodes;
 
-  const cols = Math.ceil(Math.sqrt(nodes.length));
-  const spacingX = 400;
-  const spacingY = 400;
-
-  // Sort nodes by name or type
+  // Sort: tables first, then enums; alphabetical within each group.
   const sortedNodes = [...nodes].sort((a, b) => {
-    const nameA = (a.data as any).name || '';
-    const nameB = (b.data as any).name || '';
+    const typeOrder = (t?: string) => (t === 'tableNode' ? 0 : t === 'enumNode' ? 1 : 2);
+    const to = typeOrder(a.type) - typeOrder(b.type);
+    if (to !== 0) return to;
+    const nameA = String((a.data as any)?.name || a.id);
+    const nameB = String((b.data as any)?.name || b.id);
     return nameA.localeCompare(nameB);
   });
 
-  return nodes.map((node) => {
-    const index = sortedNodes.findIndex(n => n.id === node.id);
-    const col = index % cols;
-    const row = Math.floor(index / cols);
+  const COL_GAP = 60;
+  const ROW_GAP = 50;
 
-    return {
-      ...node,
-      position: {
-        x: col * spacingX,
-        y: row * spacingY,
-      },
-    };
+  // Compute column count targeting a ~16:9 canvas given the average node footprint.
+  const avgW = sortedNodes.reduce((s, n) => s + getNodeWidth(n, detailLevel), 0) / sortedNodes.length;
+  const avgH = sortedNodes.reduce((s, n) => s + getNodeHeight(n, detailLevel), 0) / sortedNodes.length;
+  const targetAspect = 16 / 9;
+  const cols = Math.max(
+    1,
+    Math.min(
+      sortedNodes.length,
+      Math.round(Math.sqrt((sortedNodes.length * targetAspect * avgH) / Math.max(1, avgW)))
+    )
+  );
+
+  // Per-column widths (max width in that column) and per-row heights (max height in that row)
+  const colWidths: number[] = new Array(cols).fill(0);
+  const rowHeights: number[] = [];
+
+  sortedNodes.forEach((n, idx) => {
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    colWidths[col] = Math.max(colWidths[col], getNodeWidth(n, detailLevel));
+    rowHeights[row] = Math.max(rowHeights[row] ?? 0, getNodeHeight(n, detailLevel));
+  });
+
+  // Cumulative offsets
+  const colOffsets: number[] = [0];
+  for (let c = 1; c < cols; c++) {
+    colOffsets.push(colOffsets[c - 1] + colWidths[c - 1] + COL_GAP);
+  }
+  const rowOffsets: number[] = [0];
+  for (let r = 1; r < rowHeights.length; r++) {
+    rowOffsets.push(rowOffsets[r - 1] + rowHeights[r - 1] + ROW_GAP);
+  }
+
+  const positionMap = new Map<string, { x: number; y: number }>();
+  sortedNodes.forEach((n, idx) => {
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    // Center each node horizontally within its column (column width = tallest/widest in that column)
+    const cellW = colWidths[col];
+    const nodeW = getNodeWidth(n, detailLevel);
+    positionMap.set(n.id, {
+      x: colOffsets[col] + (cellW - nodeW) / 2,
+      y: rowOffsets[row],
+    });
+  });
+
+  return nodes.map((n) => {
+    const pos = positionMap.get(n.id);
+    return pos ? { ...n, position: pos } : n;
   });
 }
 
@@ -371,7 +559,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         layoutedBasicNodes = applySnowflakeLayout(basicNodes, edges, detailLevel);
         break;
       case 'compact':
-        layoutedBasicNodes = applyCompactLayout(basicNodes);
+        layoutedBasicNodes = applyCompactLayout(basicNodes, detailLevel);
         break;
       case 'left-right':
       default:
